@@ -21,57 +21,30 @@ export async function saveBusinessProfile(
 ): Promise<SaveProfileState> {
   const name = String(formData.get("name") ?? "").trim();
   const logoText = String(formData.get("logoText") ?? "").trim();
-
   const welcomeMessage = String(formData.get("message") ?? "").trim();
+  const invitationMessage = String(formData.get("invitationMessage") ?? "").trim();
 
-  const invitationMessage = String(
-    formData.get("invitationMessage") ?? "",
-  ).trim();
-
-  // Validate the business information.
   if (!name || name.length > 120) {
-    return {
-      error: "Business name must be 1–120 characters.",
-      success: "",
-    };
+    return { error: "Business name must be 1–120 characters.", success: "" };
   }
-
   if (logoText.length > 12) {
-    return {
-      error: "Logo text cannot exceed 12 characters.",
-      success: "",
-    };
+    return { error: "Logo text cannot exceed 12 characters.", success: "" };
   }
-
   if (welcomeMessage.length > 500 || invitationMessage.length > 500) {
-    return {
-      error: "Messages cannot exceed 500 characters.",
-      success: "",
-    };
+    return { error: "Messages cannot exceed 500 characters.", success: "" };
   }
 
-  // Validate and prepare review destinations.
-  const reviewLinks: {
-    platform: string;
-    url: string;
-  }[] = [];
-
+  const reviewLinks: { platform: string; url: string }[] = [];
   for (const platform of platforms) {
     const value = String(formData.get(platform.field) ?? "").trim();
-
-    // Empty field means this platform is disabled.
     if (!value) continue;
 
     if (value.length > 2048) {
-      return {
-        error: `${platform.name} URL is too long.`,
-        success: "",
-      };
+      return { error: `${platform.name} URL is too long.`, success: "" };
     }
 
     try {
       const parsed = new URL(value);
-
       if (
         parsed.protocol !== "https:" ||
         !parsed.hostname ||
@@ -87,40 +60,37 @@ export async function saveBusinessProfile(
       };
     }
 
-    reviewLinks.push({
-      platform: platform.name,
-      url: value,
-    });
+    reviewLinks.push({ platform: platform.name, url: value });
   }
 
   const supabase = await createClient();
-
-  // Verify the signed-in user.
   const { data: authData, error: authError } = await supabase.auth.getClaims();
-
-  if (authError || !authData?.claims?.sub) {
-    return {
-      error: "Your session has expired. Please sign in again.",
-      success: "",
-    };
+  const ownerId = authData?.claims?.sub;
+  if (authError || !ownerId) {
+    return { error: "Your session has expired. Please sign in again.", success: "" };
   }
 
-  // Verify this particular business belongs to the user.
   const { data: ownedBusiness, error: lookupError } = await supabase
     .from("businesses")
-    .select("id, slug")
+    .select("id, slug, is_published")
     .eq("id", businessId)
-    .eq("owner_id", authData.claims.sub)
+    .eq("owner_id", ownerId)
     .maybeSingle();
 
   if (lookupError || !ownedBusiness) {
+    return { error: "You are not authorised to edit this business.", success: "" };
+  }
+
+  // Avoid leaving a published business with no review destinations.
+  // The publishing action also checks this before publication.
+  if (ownedBusiness.is_published && reviewLinks.length === 0) {
     return {
-      error: "You are not authorised to edit this business.",
+      error: "Unpublish your profile before removing the final review destination.",
       success: "",
     };
   }
 
-  // Update details and review links in one transaction.
+  // This function was created in Step 4B and saves details + links atomically.
   const { error } = await supabase.rpc("save_business_profile", {
     p_business_id: businessId,
     p_name: name,
@@ -132,20 +102,12 @@ export async function saveBusinessProfile(
 
   if (error) {
     console.error("Profile save failed:", error);
-
-    return {
-      error: "Unable to save your profile. Please try again.",
-      success: "",
-    };
+    return { error: "Unable to save your profile. Please try again.", success: "" };
   }
 
-  // Refresh the database-backed pages.
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/edit");
   revalidatePath(`/r/${ownedBusiness.slug}`);
 
-  return {
-    error: "",
-    success: "Your business profile has been saved successfully.",
-  };
+  return { error: "", success: "Your business profile has been saved successfully." };
 }

@@ -3,7 +3,6 @@
 import { useActionState, useRef, useState } from "react";
 import Link from "next/link";
 import { QRCodeCanvas } from "qrcode.react";
-
 import type { Business } from "@/lib/businesses";
 import {
   changePublication,
@@ -29,21 +28,14 @@ export default function BusinessDashboard({
   isPublished,
   canPublish,
 }: BusinessDashboardProps) {
-  // Public URL generated from the business slug.
   const shareUrl = useReviewPageUrl(business.slug);
-
   const [copyStatus, setCopyStatus] = useState("");
-
   const qrRef = useRef<HTMLCanvasElement>(null);
-
-  // Publication form.
   const [publicationState, publicationAction, pending] = useActionState(
     changePublication,
     initialPublicationState,
   );
 
-  // Business owner controls this text.
-  // The review URL is added automatically.
   const message = [
     business.invitationMessage.trim(),
     ...(shareUrl ? [`You can leave your feedback here: ${shareUrl}`] : []),
@@ -52,9 +44,7 @@ export default function BusinessDashboard({
     .join("\n\n");
 
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-
   const smsUrl = `sms:?body=${encodeURIComponent(message)}`;
-
   const emailUrl = `mailto:?subject=${encodeURIComponent(
     `Review your experience with ${business.name}`,
   )}&body=${encodeURIComponent(message)}`;
@@ -72,34 +62,25 @@ export default function BusinessDashboard({
 
   function downloadQRCode() {
     if (!shareUrl || !isPublished) return;
-
     const canvas = qrRef.current;
-
     if (!canvas) return;
 
-    const imageUrl = canvas.toDataURL("image/png");
-
     const link = document.createElement("a");
-
-    link.href = imageUrl;
+    link.href = canvas.toDataURL("image/png");
     link.download = `${business.slug}-review-qr.png`;
-
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
   }
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900">
       <div className="mx-auto w-full max-w-xl">
-        {/* HEADER */}
         <header className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight">
             Your Review Dashboard
           </h1>
-
           <p className="mt-2 text-slate-600">{business.name}</p>
-
           <Link
             href="/dashboard/edit"
             className="mt-4 inline-block text-sm font-semibold text-blue-600 hover:underline"
@@ -108,11 +89,10 @@ export default function BusinessDashboard({
           </Link>
         </header>
 
-        {/* PUBLICATION */}
+        {/* Publishing */}
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">Profile Status</h2>
-
             <span
               className={
                 isPublished
@@ -123,7 +103,6 @@ export default function BusinessDashboard({
               {isPublished ? "Published" : "Draft"}
             </span>
           </div>
-
           <p className="mt-3 text-sm leading-6 text-slate-600">
             {isPublished
               ? "Your review page is live and ready to share."
@@ -132,9 +111,7 @@ export default function BusinessDashboard({
 
           <form action={publicationAction} className="mt-5">
             <input type="hidden" name="businessId" value={businessId} />
-
             <input type="hidden" name="publish" value={String(!isPublished)} />
-
             <button
               type="submit"
               disabled={pending || (!isPublished && !canPublish)}
@@ -150,17 +127,15 @@ export default function BusinessDashboard({
 
           {!isPublished && !canPublish && (
             <p className="mt-3 text-sm text-amber-700">
-              Add at least one review destination in your profile editor before
-              publishing.
+              Add at least one review destination in your profile editor
+              before publishing.
             </p>
           )}
-
           {publicationState.error && (
             <p role="alert" className="mt-3 text-sm text-red-600">
               {publicationState.error}
             </p>
           )}
-
           {publicationState.success && (
             <p role="status" className="mt-3 text-sm text-green-700">
               {publicationState.success}
@@ -168,16 +143,14 @@ export default function BusinessDashboard({
           )}
         </section>
 
-        {/* PUBLIC REVIEW URL */}
+        {/* Public URL */}
         <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold">Your Review Link</h2>
-
           <p className="mt-2 text-sm text-slate-500">
             {isPublished
               ? "Share this link with customers."
               : "Your link will be available for sharing once published."}
           </p>
-
           <input
             aria-label="Public review URL"
             type="text"
@@ -186,7 +159,6 @@ export default function BusinessDashboard({
             onFocus={(event) => event.currentTarget.select()}
             className="mt-5 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 outline-none focus:border-blue-500"
           />
-
           {isPublished && (
             <>
               <button
@@ -197,14 +169,9 @@ export default function BusinessDashboard({
               >
                 Copy Review Link
               </button>
-
-              <p
-                role="status"
-                className="mt-2 min-h-5 text-center text-sm text-slate-500"
-              >
+              <p role="status" className="mt-2 min-h-5 text-center text-sm text-slate-500">
                 {copyStatus}
               </p>
-
               <Link
                 href={`/r/${business.slug}`}
                 target="_blank"
@@ -217,15 +184,13 @@ export default function BusinessDashboard({
           )}
         </section>
 
-        {/* QR CODE */}
+        {/* QR code */}
         {isPublished && (
           <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
             <h2 className="text-lg font-semibold">Your QR Code</h2>
-
             <p className="mt-2 text-sm text-slate-500">
               Let customers scan this code to open your review page.
             </p>
-
             <div className="mt-6 flex justify-center">
               {shareUrl ? (
                 <QRCodeCanvas
@@ -240,11 +205,10 @@ export default function BusinessDashboard({
                 <p className="text-sm text-slate-400">Preparing QR code...</p>
               )}
             </div>
-
             <button
               type="button"
-              onClick={downloadQRCode}
               disabled={!shareUrl}
+              onClick={downloadQRCode}
               className="mt-6 w-full rounded-xl border border-slate-200 px-5 py-3 font-semibold transition hover:bg-slate-50 disabled:opacity-50"
             >
               Download QR Code
@@ -252,15 +216,13 @@ export default function BusinessDashboard({
           </section>
         )}
 
-        {/* SHARING */}
+        {/* Manual sharing with a pre-filled neutral invitation */}
         {isPublished && shareUrl && (
           <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-semibold">Share With Customers</h2>
-
             <p className="mt-2 text-sm text-slate-500">
               Choose how you&apos;d like to send your review link.
             </p>
-
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
               <a
                 href={whatsappUrl}
@@ -270,14 +232,12 @@ export default function BusinessDashboard({
               >
                 WhatsApp
               </a>
-
               <a
                 href={smsUrl}
                 className="rounded-xl border border-slate-200 px-4 py-3 text-center text-sm font-semibold hover:bg-slate-50"
               >
                 SMS
               </a>
-
               <a
                 href={emailUrl}
                 className="rounded-xl border border-slate-200 px-4 py-3 text-center text-sm font-semibold hover:bg-slate-50"

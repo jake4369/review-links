@@ -13,52 +13,46 @@ export async function changePublication(
   formData: FormData,
 ): Promise<PublicationState> {
   const businessId = String(formData.get("businessId") ?? "");
+  const requestedValue = formData.get("publish");
 
-  const publish = formData.get("publish") === "true";
-
-  const supabase = await createClient();
-
-  // Verify the signed-in user.
-  const { data, error: authError } = await supabase.auth.getClaims();
-
-  if (authError || !data?.claims?.sub) {
-    return {
-      error: "Please sign in again.",
-      success: "",
-    };
+  if (!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(businessId)) {
+    return { error: "Invalid business identifier.", success: "" };
   }
 
-  // Retrieve only a business owned by this user.
+  if (requestedValue !== "true" && requestedValue !== "false") {
+    return { error: "Invalid publication request.", success: "" };
+  }
+
+  const publish = requestedValue === "true";
+  const supabase = await createClient();
+
+  const { data: authData, error: authError } = await supabase.auth.getClaims();
+  const ownerId = authData?.claims?.sub;
+
+  if (authError || !ownerId) {
+    return { error: "Please sign in again.", success: "" };
+  }
+
+  // Only the authenticated owner may change this business.
   const { data: business, error: businessError } = await supabase
     .from("businesses")
     .select("id, slug")
     .eq("id", businessId)
-    .eq("owner_id", data.claims.sub)
+    .eq("owner_id", ownerId)
     .maybeSingle();
 
   if (businessError || !business) {
-    return {
-      error: "Business not found or access denied.",
-      success: "",
-    };
+    return { error: "Business not found or access denied.", success: "" };
   }
 
-  // Require at least one review destination
-  // before publishing.
   if (publish) {
     const { count, error: linksError } = await supabase
       .from("review_links")
-      .select("id", {
-        count: "exact",
-        head: true,
-      })
+      .select("id", { count: "exact", head: true })
       .eq("business_id", business.id);
 
     if (linksError) {
-      return {
-        error: "Unable to check review destinations.",
-        success: "",
-      };
+      return { error: "Unable to check review destinations.", success: "" };
     }
 
     if (!count) {
@@ -69,25 +63,18 @@ export async function changePublication(
     }
   }
 
-  // Update publication status.
-  const { data: updated, error: updateError } = await supabase
+  const { data: updatedBusiness, error: updateError } = await supabase
     .from("businesses")
-    .update({
-      is_published: publish,
-    })
+    .update({ is_published: publish })
     .eq("id", business.id)
-    .eq("owner_id", data.claims.sub)
+    .eq("owner_id", ownerId)
     .select("id")
     .single();
 
-  if (updateError || !updated) {
-    return {
-      error: "Unable to update publication status.",
-      success: "",
-    };
+  if (updateError || !updatedBusiness) {
+    return { error: "Unable to change publication status.", success: "" };
   }
 
-  // Refresh the owner dashboard and public page.
   revalidatePath("/dashboard");
   revalidatePath(`/r/${business.slug}`);
 
