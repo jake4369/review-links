@@ -2,17 +2,18 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import {
+  REVIEW_DESTINATIONS,
+  reviewDestinationError,
+  type ReviewField,
+} from "@/lib/review-destination-validation";
 
 export type SaveProfileState = {
   error: string;
   success: string;
+  fieldErrors?: Partial<Record<ReviewField, string>>;
+  submittedValues?: Partial<Record<ReviewField, string>>;
 };
-
-const platforms = [
-  { name: "Google", field: "google" },
-  { name: "Trustpilot", field: "trustpilot" },
-  { name: "Facebook", field: "facebook" },
-] as const;
 
 export async function saveBusinessProfile(
   businessId: string,
@@ -34,33 +35,29 @@ export async function saveBusinessProfile(
     return { error: "Messages cannot exceed 500 characters.", success: "" };
   }
 
+  const fieldErrors: Partial<Record<ReviewField, string>> = {};
+  const submittedValues: Partial<Record<ReviewField, string>> = {};
   const reviewLinks: { platform: string; url: string }[] = [];
-  for (const platform of platforms) {
-    const value = String(formData.get(platform.field) ?? "").trim();
-    if (!value) continue;
 
-    if (value.length > 2048) {
-      return { error: `${platform.name} URL is too long.`, success: "" };
+  for (const destination of REVIEW_DESTINATIONS) {
+    const value = String(formData.get(destination.field) ?? "").trim();
+    submittedValues[destination.field] = value;
+
+    const error = reviewDestinationError(destination.name, value);
+    if (error) {
+      fieldErrors[destination.field] = error;
+    } else if (value) {
+      reviewLinks.push({ platform: destination.name, url: value });
     }
+  }
 
-    try {
-      const parsed = new URL(value);
-      if (
-        parsed.protocol !== "https:" ||
-        !parsed.hostname ||
-        parsed.username ||
-        parsed.password
-      ) {
-        throw new Error("Invalid URL");
-      }
-    } catch {
-      return {
-        error: `Please enter a valid HTTPS review URL for ${platform.name}.`,
-        success: "",
-      };
-    }
-
-    reviewLinks.push({ platform: platform.name, url: value });
+  if (Object.keys(fieldErrors).length > 0) {
+    return {
+      error: "Please correct the highlighted review links before saving.",
+      success: "",
+      fieldErrors,
+      submittedValues,
+    };
   }
 
   const supabase = await createClient();
@@ -81,8 +78,6 @@ export async function saveBusinessProfile(
     return { error: "You are not authorised to edit this business.", success: "" };
   }
 
-  // Avoid leaving a published business with no review destinations.
-  // The publishing action also checks this before publication.
   if (ownedBusiness.is_published && reviewLinks.length === 0) {
     return {
       error: "Unpublish your profile before removing the final review destination.",
@@ -90,7 +85,40 @@ export async function saveBusinessProfile(
     };
   }
 
-  // This function was created in Step 4B and saves details + links atomically.
+  // Verify against PostgreSQL's authoritative URL policy before saving.
+  // If SQL ever changes, the rejected destination still gets its own error.
+  for (const destination of REVIEW_DESTINATIONS) {
+    const value = submittedValues[destination.field];
+    if (!value) continue;
+
+    const { data: accepted, error: validationError } = await supabase.rpc(
+      "review_destination_is_valid",
+      { p_platform: destination.name, p_url: value },
+    );
+
+    if (validationError) {
+      console.error("Review link validation unavailable:", validationError);
+      return {
+        error: "Unable to verify review destinations right now. Please try again.",
+        success: "",
+      };
+    }
+
+    if (accepted !== true) {
+      fieldErrors[destination.field] =
+        "This destination was rejected by the security rules. Check that it is a direct, official review URL.";
+    }
+  }
+
+  if (Object.keys(fieldErrors).length > 0) {
+    return {
+      error: "Please correct the highlighted review links before saving.",
+      success: "",
+      fieldErrors,
+      submittedValues,
+    };
+  }
+
   const { error } = await supabase.rpc("save_business_profile", {
     p_business_id: businessId,
     p_name: name,
@@ -102,6 +130,15 @@ export async function saveBusinessProfile(
 
   if (error) {
     console.error("Profile save failed:", error);
+    if (
+      error.code === "23514" ||
+      error.message.includes("review_links_destination_valid")
+    ) {
+      return {
+        error: "A review URL was rejected by the database. Check the destination links and try again.",
+        success: "",
+      };
+    }
     return { error: "Unable to save your profile. Please try again.", success: "" };
   }
 

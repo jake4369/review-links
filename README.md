@@ -1,68 +1,44 @@
-# ReviewLinks — Phase 2, Step 4C (drop-in files)
+# ReviewLinks — Inline Review URL Validation
 
-This package was prepared from the code and folder structure described in your ChatGPT conversation. It is **not** a copy of your complete Mac project. It does not include any credentials.
+Adds clear client and server feedback for invalid review destinations to the existing Step 4C editor. This is a focused usability patch; it does not implement the future custom-destination feature.
 
-## Files in this package
+## Files
 
-- `src/app/dashboard/actions.ts` — publish/unpublish Server Action (new)
-- `src/app/dashboard/page.tsx` — database-backed dashboard page (replacement)
-- `src/components/BusinessDashboard.tsx` — QR code and manual sharing UI (replacement)
-- `src/app/r/[slug]/page.tsx` — public published profile (replacement)
-- `src/lib/supabase/public.ts` — unauthenticated client for public pages (new)
-- `src/app/dashboard/edit/actions.ts` — profile save with public-page revalidation and guard against removing all published links (replacement)
-- `src/components/ProfileEditor.tsx` — same editor, updated explanatory text (replacement)
+- `src/lib/review-destination-validation.ts` — shared policy-aware URL checks and specific error explanations (new).
+- `src/components/ProfileEditor.tsx` — red-border highlighting, inline errors, focus on invalid URL, correction clears error (replacement).
+- `src/app/dashboard/edit/actions.ts` — preserve server-side validation; use the PostgreSQL `review_destination_is_valid` function from Step 5C.3 to identify the rejected field (replacement).
 
 ## Before installing
 
-1. Your Step 4A and 4B work must already be working, including the `public.save_business_profile(...)` PostgreSQL function and its permissions.
-2. Keep your `src/app/dashboard/edit/page.tsx`, `src/lib/businesses.ts`, `src/hooks/useReviewProfile.ts`, `src/lib/supabase/server.ts`, and auth files: they are still needed.
-3. The required packages should already be installed: `@supabase/supabase-js`, `@supabase/ssr`, and `qrcode.react`.
-4. Your `.env.local` must include `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+You must have completed **Step 5C.3** including `public.review_destination_is_valid(text,text)` and its CHECK constraint. The authenticated role must be permitted to execute that validation function (PostgreSQL ordinarily grants EXECUTE to PUBLIC on newly created functions unless the privilege was revoked).
 
-## Installation
+The patch is based on the Step 4C source package shared earlier in this chat. If you've changed the editor or save action since then, review the diff and merge, instead of blindly overwriting your changes.
 
-**Back up your current work first.** In the root of your project:
+## Install
 
-```bash
-git status
-git add .
-git commit -m "Checkpoint before ReviewLinks Step 4C"
-```
-
-Then copy the files from this archive into matching paths under your existing `review-links-app` folder. The archive contains seven files that replace or add code, plus this README. Avoid copying the files into a nested `reviewlinks-step-4c` folder: place the `src` folder's **contents** into your existing `src` tree.
-
-**Unzip using Terminal (optional):** Copy the downloaded ZIP file into the root of your `review-links-app` project and run:
+Make a Git checkpoint first:
 
 ```bash
-unzip -o reviewlinks-step-4c.zip
+git add . && git commit -m "Checkpoint before inline URL validation"
 ```
 
-This overwrites matching files, so do this only after checking the included file names and backing up your local edits.
+Extract the contents of this ZIP **into the root** of your existing `review-links-app` folder so `src/...` paths align.
 
-## Verification
+Run:
 
 ```bash
 npm run lint
 npx tsc --noEmit
-npm run dev
+npm run build
 ```
 
-Then test:
+## Test
 
-1. Sign in at `/login`; visit `/dashboard`.
-2. In `/dashboard/edit`, add a real HTTPS review destination and save.
-3. Publish the profile on `/dashboard`.
-4. Visit `/r/your-slug` in a signed-out/incognito browser. It should display the saved business name, welcome message and clickable platforms.
-5. On the dashboard, copy the review URL, download the QR PNG, and test WhatsApp/SMS/email sharing; check the invitation message has the automatic URL suffix.
-6. Edit the welcome message and refresh the public page to verify the change appears.
-7. Unpublish. A signed-out visit to `/r/your-slug` should now return 404.
-8. Republishing should restore the public page.
+1. In Google URL, enter `https://google.com.example.org/review`, click Save. The Google field should turn red with a specific explanation and **nothing is saved**.
+2. Change it to a genuine `https://g.page/...` or `https://www.google.com/...` review URL. The error should clear.
+3. Try `http://...`, `https://localhost/...`, `https://www.google.com/url?q=...`, and credentials in an address: each should show an appropriate message.
+4. Verify valid Google, Facebook and Trustpilot review links can still be saved and persist after refreshing.
+5. Verify blank optional destination fields still remove an existing link (unless it is the last link on a published profile, which remains blocked).
+6. Test a URL that looks valid to the browser but fails PostgreSQL's validation; it should be flagged by the server with the corresponding field highlighted.
 
-## Scope and limitations
-
-- There is no real Supabase project or local Mac source available in this workspace, so live database and Mac build tests must be run on your device.
-- This implements the **one-business-per-account** dashboard planned in earlier steps.
-- A published business is prevented by the normal editor from removing its final review link. Database-level concurrency protection and complete multi-account RLS tests are for the security review (Step 5).
-- The public page uses a Supabase **publishable** key (not service role). It ignores owner cookies so public access follows anonymous RLS.
-- `localhost` QR codes are useful for development but cannot be opened by other devices without a hosted or accessible network address.
-- Do not expose or commit secrets in Git or screenshots.
+The browser checks aim to match the current SQL validation from Step 5C.3. PostgreSQL remains authoritative; if the SQL function changes, update the helper too. Actual Supabase and Mac build tests still need running in your app.
