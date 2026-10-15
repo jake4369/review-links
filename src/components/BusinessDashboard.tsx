@@ -127,8 +127,8 @@ export default function BusinessDashboard({
 
           {!isPublished && !canPublish && (
             <p className="mt-3 text-sm text-amber-700">
-              Add at least one review destination in your profile editor
-              before publishing.
+              Add at least one review destination in your profile editor before
+              publishing.
             </p>
           )}
           {publicationState.error && (
@@ -169,7 +169,10 @@ export default function BusinessDashboard({
               >
                 Copy Review Link
               </button>
-              <p role="status" className="mt-2 min-h-5 text-center text-sm text-slate-500">
+              <p
+                role="status"
+                className="mt-2 min-h-5 text-center text-sm text-slate-500"
+              >
                 {copyStatus}
               </p>
               <Link
@@ -228,7 +231,7 @@ export default function BusinessDashboard({
                 href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-xl bg-green-600 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-green-700"
+                className="rounded-xl bg-green-700 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-green-800"
               >
                 WhatsApp
               </a>
@@ -248,7 +251,7 @@ export default function BusinessDashboard({
           </section>
         )}
 
-        <footer className="mt-10 text-center text-xs text-slate-400">
+        <footer className="mt-10 text-center text-xs text-slate-600">
           ReviewLinks — Making reviews easier.
         </footer>
       </div>

@@ -70,7 +70,7 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
           ))}
         </div>
 
-        <p className="mt-8 text-xs leading-5 text-slate-400">
+        <p className="mt-8 text-xs leading-5 text-slate-600">
           We welcome all genuine feedback. Reviews are submitted directly
           through your chosen platform.
         </p>
