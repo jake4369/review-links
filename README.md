@@ -1,26 +1,28 @@
-# ReviewLinks — Phase 3.3: Accessible Ordering & Safer Removal
+# ReviewLinks — Phase 3.3 Notification Refinement
 
-This package is built from the **Phase 3.2 ProfileEditor.tsx** used in the previous ReviewLinks update. It intentionally contains only one modified source file:
-
-- `src/components/ProfileEditor.tsx`
+This is a focused follow-up to the **Phase 3.3 Accessible Destination Ordering & Safer Removal** update.
 
 ## What changed
 
-1. **Accessible ordering.** Up and Down controls update the form order. First/last actions are disabled as appropriate; each button has a descriptive accessible name. After movement, a live announcement describes the new position. Keyboard focus follows the moved destination.
-2. **Removal confirmation.** `Remove` now opens an inline confirmation with `Yes, remove` and `Keep destination`. Removing changes only the unsaved editor state. Business data is not deleted until Save Changes is successful.
-3. **Clear removal states.** Previously saved destinations marked for removal appear in an unsaved-changes notice. Following a successful save and re-fetch of database records, an on-screen notification confirms how many destinations were removed.
-4. **Immediately visible feedback.** Success, failure, and informational notifications appear in a fixed, dismissible, screen-reader-announced banner at the top of the viewport; users no longer have to scroll below Save Changes to see a result.
-5. **Unchanged security/validation.** The existing save Server Action and Supabase `save_business_profile_v2()` function are retained, along with field-specific URL validation, the 10-destination limit, publication safeguards and UUID preservation.
+Only `src/components/ProfileEditor.tsx` is replaced. All ordering, confirmation, URL validation, Supabase calls and UUID-based saving remain in place.
 
-## Install
+- **Successful saves** display a top-of-screen confirmation for **6 seconds**, then disappear automatically. No click is required.
+- **Routine information** (e.g. cancellation of a removal) also disappears after **6 seconds**.
+- **Errors** remain visible until dismissed or corrected. Error notifications keep a Dismiss button; success notifications do not need one.
+- **Pending deletion and ordering** are still identified in the persistent inline *Unsaved changes* warning until the changes are saved or the form is abandoned.
+- **Completed deletion** is reported only after successful saving and reloading from the database.
+- A subtle **✓ Saved to your profile** indicator appears below the Save Changes button after successful saving. It disappears when the form is edited, a destination is removed/added, or its order changes.
+- The notification remains a polite live announcement for success/info and an alert for errors.
 
-**Commit your current working app first**, or back up `src/components/ProfileEditor.tsx`.
+## Installation
 
-From your Next.js project root:
+Before extracting, create a Git checkpoint or save a copy of your current `src/components/ProfileEditor.tsx`.
+
+From the project root:
 
 ```bash
 cd ~/Documents/review-links-app
-unzip -o ~/Downloads/reviewlinks-phase-3-3.zip -d .
+unzip -o ~/Downloads/reviewlinks-phase-3-3-notifications.zip -d .
 npm run lint
 npx tsc --noEmit
 npm run build
@@ -28,23 +30,20 @@ npm run build
 
 No SQL changes or additional npm packages are required.
 
-## Verify, preferably using `testbus`
+## Manual tests (use `testbus`)
 
-1. **Cancel removal:** Select Remove for a destination, then `Keep destination`. It must stay in the editor and in Supabase.
-2. **Confirm removal:** Select Remove > `Yes, remove`. The destination disappears from the form, but the UI must say its deletion is **pending until Save Changes**. Refresh **without** saving to verify the persisted destination returns.
-3. **Save a removal:** Repeat the removal, then save. The top notification must say a destination was successfully removed; refresh and check it is gone. Do this with a draft or with a published profile that has more than one destination.
-4. **Protect last link:** When published, removing the last configured link and pressing Save should show an error immediately. PostgreSQL must retain that link.
-5. **Reorder:** With at least two destinations, use Up/Down, save, refresh the editor, and inspect the public page. The order must persist and reflect `display_order`.
-6. **Check stable UUIDs:** Use Supabase SQL Editor before/after reorder; `id` values must not change, only `display_order`.
-7. **Keyboard:** Tab through the controls and activate Up/Down and confirmation buttons with Enter/Space. Check focus stays usable and position changes are announced by VoiceOver.
-8. **Save result at the top:** Save successfully while scrolled near the bottom of the editor; confirm the notification is visible without scrolling. Then deliberately use an invalid destination URL to verify that an error notification is also visible.
-9. **Regression:** Test adding a custom destination, editing URLs, reloading saved fields, QR sharing, publishing, and `npm run lint`, `npx tsc --noEmit`, `npm run build`.
+1. Save a valid change. Verify the top success notification appears **immediately**, then disappears after approximately **6 seconds** without needing to dismiss it.
+2. Check the small *Saved to your profile* indicator remains near Save Changes. Edit any field or reorder/remove/add a destination; verify it clears.
+3. Enter an invalid review URL and try to save. The error message should **remain beyond 6 seconds** and the affected input should still be highlighted until corrected. You may dismiss the top error manually; field-level errors remain.
+4. Click Remove on a saved destination, then confirm. Check that the **Unsaved changes** warning stays visible after the top informational message disappears. Refresh without saving: the record should reappear.
+5. Repeat removal, then save. Verify the top notification reports a completed removal **only after** success. Check the record is absent after refresh.
+6. Click Remove > Keep destination. The short information message should disappear automatically; the link should remain.
+7. Try Move Up / Move Down, save and refresh. Check the public review page displays the new order and UUIDs remain stable.
+8. With a published profile, attempt to remove its last link. Verify the save fails and the error does not auto-dismiss.
+9. Test on mobile, with keyboard and VoiceOver; run `npm run lint`, `npx tsc --noEmit`, and `npm run build`.
 
-## Expected behaviour and limitations
+## Scope and limitations
 
-- Removing an **unsaved new row** only discards that row; no database deletion occurs.
-- Removing a **previously saved row** is staged until Save Changes and database success. There is no claim of completed deletion beforehand.
-- An interrupted save or failure to refresh saved records is **not** presented as a confirmed deletion; check the database state/reload before retrying.
-- Reordering is also staged until Save Changes and uses the same v2 RPC, which derives `display_order` from list order.
-- The old `review_links_unique_platform_idx` index still enforces distinct platform names; do not drop it during Phase 3.3. We will remove it during the coordinated legacy function cutover later.
-- A full local Next.js build was not possible from this isolated source package; the TSX passed TypeScript **syntax** validation. Run the project checks shown above.
+The supplied TSX component passed TypeScript syntax/transpilation checks, but it was **not** compiled against your local Next.js project and connected Supabase instance. Complete the tests above.
+
+The original `review_links_unique_platform_idx` restriction is unchanged; do not remove it until the coordinated legacy function cutover in the next phase.

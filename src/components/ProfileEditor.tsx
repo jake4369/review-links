@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import type { SubmitEvent } from "react";
 import Link from "next/link";
 import {
@@ -91,7 +91,27 @@ export default function ProfileEditor({
   const [orderChanged, setOrderChanged] = useState(false);
   const [infoMessage, setInfoMessage] = useState("");
   const [noticeDismissed, setNoticeDismissed] = useState(false);
+  const [noticeVersion, setNoticeVersion] = useState(0);
+  const [saveConfirmed, setSaveConfirmed] = useState(false);
   const [orderingAnnouncement, setOrderingAnnouncement] = useState("");
+
+  // Short confirmations disappear automatically; errors remain until
+  // corrected or dismissed. Pending deletions and ordering stay visible in
+  // the inline unsaved-changes notice until a successful save or reload.
+  useEffect(() => {
+    if (response.error || (!response.success && !infoMessage)) return;
+    const timeout = window.setTimeout(() => setNoticeDismissed(true), 6000);
+    return () => window.clearTimeout(timeout);
+  }, [response.error, response.success, infoMessage, noticeVersion]);
+
+  function revealNotice() {
+    setNoticeDismissed(false);
+    setNoticeVersion((previous) => previous + 1);
+  }
+
+  function markUnsaved() {
+    setSaveConfirmed(false);
+  }
 
   const shareUrl = useReviewPageUrl(business.slug);
   const fullMessage = [
@@ -129,11 +149,12 @@ export default function ProfileEditor({
 
   function addDestination() {
     if (rows.length >= MAX_DESTINATIONS || pending) return;
+    markUnsaved();
     const key = `new-${crypto.randomUUID()}`;
     setRows((previous) => [...previous, { clientKey: key, platform: "", url: "" }]);
     setResponse({ error: "", success: "" });
     setInfoMessage("");
-    setNoticeDismissed(false);
+    revealNotice();
     window.requestAnimationFrame(() => {
       document.getElementById(`${key}-platform`)?.focus();
     });
@@ -145,7 +166,7 @@ export default function ProfileEditor({
     if (pending) return;
     setConfirmationKey(row.clientKey);
     setInfoMessage("");
-    setNoticeDismissed(false);
+    revealNotice();
     window.requestAnimationFrame(() => {
       document.getElementById(`confirm-${row.clientKey}`)?.focus();
     });
@@ -153,6 +174,7 @@ export default function ProfileEditor({
 
   function confirmRemoval(row: EditableDestination) {
     if (pending) return;
+    markUnsaved();
     const index = rows.findIndex((item) => item.clientKey === row.clientKey);
     const focusTarget = rows[index + 1] ?? rows[index - 1];
     setRows((previous) => previous.filter((item) => item.clientKey !== row.clientKey));
@@ -164,7 +186,7 @@ export default function ProfileEditor({
       setInfoMessage("Unsaved destination discarded. No database record was removed.");
     }
     setConfirmationKey(null);
-    setNoticeDismissed(false);
+    revealNotice();
     setResponse({ error: "", success: "" });
     setOrderingAnnouncement("");
     window.requestAnimationFrame(() => {
@@ -176,7 +198,7 @@ export default function ProfileEditor({
     const clientKey = confirmationKey;
     setConfirmationKey(null);
     setInfoMessage("Removal cancelled. The destination has been kept.");
-    setNoticeDismissed(false);
+    revealNotice();
     window.requestAnimationFrame(() => {
       if (clientKey) document.getElementById(`remove-${clientKey}`)?.focus();
     });
@@ -186,6 +208,7 @@ export default function ProfileEditor({
   // The order of this array is the order the existing v2 RPC saves to display_order.
   function moveDestination(clientKey: string, direction: -1 | 1) {
     if (pending || confirmationKey) return;
+    markUnsaved();
     const index = rows.findIndex((row) => row.clientKey === clientKey);
     const target = index + direction;
     if (index < 0 || target < 0 || target >= rows.length) return;
@@ -198,7 +221,7 @@ export default function ProfileEditor({
     setOrderChanged(true);
     setResponse({ error: "", success: "" });
     setInfoMessage("Review destination order changed. Save Changes to apply it.");
-    setNoticeDismissed(false);
+    revealNotice();
     setOrderingAnnouncement(`${row.platform || "Destination"} moved to position ${target + 1} of ${rows.length}.`);
 
     // Don't leave keyboard focus on a now-disabled first/last arrow.
@@ -211,12 +234,13 @@ export default function ProfileEditor({
   }
 
   function updateDestination(clientKey: string, field: InputName, value: string) {
+    markUnsaved();
     setRows((previous) =>
       previous.map((row) => row.clientKey === clientKey ? { ...row, [field]: value } : row),
     );
     setResponse({ error: "", success: "" });
     setInfoMessage("");
-    setNoticeDismissed(false);
+    revealNotice();
   }
 
   function markTouched(clientKey: string, field: InputName) {
@@ -226,7 +250,7 @@ export default function ProfileEditor({
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending) return;
-    setNoticeDismissed(false);
+    revealNotice();
     setInfoMessage("");
     if (confirmationKey) {
       setResponse({ error: "Confirm or cancel the destination removal before saving.", success: "" });
@@ -234,6 +258,7 @@ export default function ProfileEditor({
       return;
     }
     setAttemptedSave(true);
+    setSaveConfirmed(false);
     setResponse({ error: "", success: "" });
 
     const invalidRow = rows.find((row) => {
@@ -266,16 +291,19 @@ export default function ProfileEditor({
           });
           setRows(initialRows(result.savedDestinations));
           setRemovedSavedIds([]);
+          setSaveConfirmed(true);
           setOrderChanged(false);
           setTouched({});
           setAttemptedSave(false);
         } else {
+          setSaveConfirmed(false);
           // In particular, an uncertain refresh must not be reported as a
           // confirmed deletion: follow the server's reload instruction.
           setResponse(result);
         }
       } catch (error) {
         console.error("Profile save request failed:", error);
+        setSaveConfirmed(false);
         setResponse({ error: "Your changes couldn't be confirmed. Check the connection, then reload before retrying.", success: "" });
       }
     });
@@ -284,7 +312,8 @@ export default function ProfileEditor({
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900">
       <div className="mx-auto max-w-2xl">
-        {/* Always visible on mobile or desktop, even when Save is below the fold. */}
+        {/* Fixed feedback stays visible without scrolling. Successful and
+            informational messages auto-dismiss; errors remain persistent. */}
         {!noticeDismissed && (response.error || response.success || infoMessage) && (
           <div
             role={response.error ? "alert" : "status"}
@@ -298,14 +327,16 @@ export default function ProfileEditor({
             }`}
           >
             <p className="min-w-0 flex-1">{response.error || response.success || infoMessage}</p>
-            <button
-              type="button"
-              onClick={() => setNoticeDismissed(true)}
-              aria-label="Dismiss notification"
-              className="shrink-0 rounded-md px-2 py-1 font-semibold underline focus-visible:outline-2 focus-visible:outline-offset-2"
-            >
-              Dismiss
-            </button>
+            {response.error && (
+              <button
+                type="button"
+                onClick={() => setNoticeDismissed(true)}
+                aria-label="Dismiss error notification"
+                className="shrink-0 rounded-md px-2 py-1 font-semibold underline focus-visible:outline-2 focus-visible:outline-offset-2"
+              >
+                Dismiss
+              </button>
+            )}
           </div>
         )}
         <div role="status" aria-live="polite" className="sr-only">
@@ -317,7 +348,7 @@ export default function ProfileEditor({
         <h1 className="mt-6 text-3xl font-bold">Edit Business Profile</h1>
         <p className="mt-2 text-slate-600">Manage your business details and review destinations.</p>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+        <form onSubmit={handleSubmit} onChange={() => setSaveConfirmed(false)} className="mt-8 space-y-6">
           <section className="rounded-2xl border border-slate-200 bg-white p-6">
             <h2 className="text-xl font-semibold">Business Details</h2>
             <div className="mt-6">
@@ -494,10 +525,17 @@ export default function ProfileEditor({
             </div>
           </section>
 
-          <button type="submit" disabled={pending}
-            className="w-full rounded-xl bg-blue-600 px-6 py-4 font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
-            {pending ? "Saving..." : "Save Changes"}
-          </button>
+          <div>
+            <button type="submit" disabled={pending}
+              className="w-full rounded-xl bg-blue-600 px-6 py-4 font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
+              {pending ? "Saving..." : "Save Changes"}
+            </button>
+            {saveConfirmed && (
+              <p className="mt-2 text-center text-sm font-medium text-green-800">
+                ✓ Saved to your profile
+              </p>
+            )}
+          </div>
 
         </form>
       </div>
