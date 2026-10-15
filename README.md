@@ -1,44 +1,82 @@
-# ReviewLinks — Inline Review URL Validation
+# ReviewLinks — Phase 3.2: Dynamic Review Destinations
 
-Adds clear client and server feedback for invalid review destinations to the existing Step 4C editor. This is a focused usability patch; it does not implement the future custom-destination feature.
+## Prerequisites
 
-## Files
+- Phase 3.1 migration is installed and **all 10 checks passed**.
+- PostgreSQL function `public.save_business_profile_v2(uuid,text,text,text,text,jsonb)` exists and grants EXECUTE to `authenticated`.
+- The existing `review_destination_is_valid(text,text)` function and URL CHECK constraint remain in place.
+- Your current app is based on the prior Step 4C package and inline URL validation patch.
 
-- `src/lib/review-destination-validation.ts` — shared policy-aware URL checks and specific error explanations (new).
-- `src/components/ProfileEditor.tsx` — red-border highlighting, inline errors, focus on invalid URL, correction clears error (replacement).
-- `src/app/dashboard/edit/actions.ts` — preserve server-side validation; use the PostgreSQL `review_destination_is_valid` function from Step 5C.3 to identify the rejected field (replacement).
+This ZIP updates the existing dynamic editor; it is based on those previously delivered files, not a live checkout of your Mac. **Review your diff before applying.**
 
-## Before installing
+## Very important: one-line type change before applying the ZIP
 
-You must have completed **Step 5C.3** including `public.review_destination_is_valid(text,text)` and its CHECK constraint. The authenticated role must be permitted to execute that validation function (PostgreSQL ordinarily grants EXECUTE to PUBLIC on newly created functions unless the privilege was revoked).
+Open `src/lib/businesses.ts`. Change the `ReviewLink` platform property from this:
 
-The patch is based on the Step 4C source package shared earlier in this chat. If you've changed the editor or save action since then, review the diff and merge, instead of blindly overwriting your changes.
+```ts
+platform: "Google" | "Trustpilot" | "Facebook";
+```
+
+to:
+
+```ts
+platform: string;
+```
+
+Keep the rest of `src/lib/businesses.ts` unchanged. This allows the owner dashboard to display and publish businesses using custom destinations. Do not delete the hardcoded demo business; the homepage may still use it.
+
+## Files in this ZIP
+
+- `src/components/ProfileEditor.tsx` — adds/removes up to ten custom destinations, with editable names, URL fields, inline validation and accessibility attributes. Existing links retain database UUIDs after saving.
+- `src/app/dashboard/edit/actions.ts` — authenticated server save action, with row-specific feedback and `save_business_profile_v2` RPC.
+- `src/app/dashboard/edit/page.tsx` — loads all destinations, including their permanent UUIDs, from PostgreSQL.
+- `src/app/dashboard/page.tsx` — loads all destinations for the owner dashboard, not just Google/Trustpilot/Facebook.
+- `src/lib/review-destination-validation.ts` — same client-side URL validator as the previously tested inline-validation patch; included for completeness.
 
 ## Install
 
-Make a Git checkpoint first:
+1. Stop `npm run dev` or `npm run start` if running.
+2. Save a Git checkpoint:
 
 ```bash
-git add . && git commit -m "Checkpoint before inline URL validation"
+git add . && git commit -m "Checkpoint before Phase 3.2 dynamic review destinations"
 ```
 
-Extract the contents of this ZIP **into the root** of your existing `review-links-app` folder so `src/...` paths align.
+3. Make the **one-line type change** above to `src/lib/businesses.ts`.
+4. Extract this ZIP in the root of your `review-links-app` directory, preserving `src/...` paths. Example, after downloading to `~/Downloads`:
 
-Run:
+```bash
+unzip -o ~/Downloads/reviewlinks-phase-3-2.zip -d .
+```
+
+5. Run:
 
 ```bash
 npm run lint
 npx tsc --noEmit
 npm run build
+npm run dev
 ```
 
-## Test
+**Do not drop `review_links_unique_platform_idx` or remove the original `save_business_profile` function yet.** The old editor/function might still be needed for rollback. Until they are retired, give each destination a distinct platform name (e.g., `Google — Wolverhampton` and `Google — Birmingham`).
 
-1. In Google URL, enter `https://google.com.example.org/review`, click Save. The Google field should turn red with a specific explanation and **nothing is saved**.
-2. Change it to a genuine `https://g.page/...` or `https://www.google.com/...` review URL. The error should clear.
-3. Try `http://...`, `https://localhost/...`, `https://www.google.com/url?q=...`, and credentials in an address: each should show an appropriate message.
-4. Verify valid Google, Facebook and Trustpilot review links can still be saved and persist after refreshing.
-5. Verify blank optional destination fields still remove an existing link (unless it is the last link on a published profile, which remains blocked).
-6. Test a URL that looks valid to the browser but fails PostgreSQL's validation; it should be flagged by the server with the corresponding field highlighted.
+## Testing — please do this before Phase 3.3
 
-The browser checks aim to match the current SQL validation from Step 5C.3. PostgreSQL remains authoritative; if the SQL function changes, update the helper too. Actual Supabase and Mac build tests still need running in your app.
+1. Sign in as DevXDesign. Check that the two existing destination records display correctly in `/dashboard/edit`.
+2. Add **Checkatrade**, using a *genuine* HTTPS review URL. Save and refresh; it must remain and show a UUID in Supabase.
+3. Add another custom service; save again **without refreshing**. Verify the Checkatrade UUID didn't change (the server action returns new IDs and updates the editor state).
+4. Change an existing destination's display name and URL. Save; its UUID must be retained.
+5. Remove one destination, save, refresh and confirm it is gone.
+6. Attempt to add an eleventh destination: the Add button must be disabled at ten.
+7. Test an invalid URL such as `https://google.com.example.org/review`: highlight the offending field and reject the save. Other fields should remain unsaved (atomic transaction).
+8. Test duplicate platform names: the editor must explain the temporary unique-name restriction.
+9. Confirm the public review page lists the newly added destinations and their hostnames.
+10. Confirm the dashboard can publish a draft whose **only** destination is custom (e.g., Checkatrade). You may want to use the `testbus` account.
+11. Verify a published business cannot save with zero destinations.
+12. Verify that Account B cannot modify Account A's review destinations.
+
+**Known limitations:** Reordering controls are reserved for Phase 3.3; records currently appear in their current order with additions appended. The unique-platform-name index remains until a later coordinated cutover. Production domain/QR deployment remains pending.
+
+## Recovering from a failed installation
+
+Use your Git checkpoint to restore the four modified files and the one-line type change. The old `save_business_profile` function is intentionally still installed; no SQL changes are needed for Phase 3.2.
