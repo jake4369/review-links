@@ -15,6 +15,9 @@ export type SaveProfileState = {
   fieldErrors?: Record<string, DestinationFieldErrors>;
   submittedPayload?: string;
   savedDestinations?: Array<{ id: string; platform: string; url: string }>;
+  isPublished?: boolean;
+  autoUnpublished?: boolean;
+  requiresReload?: boolean;
 };
 
 type SubmittedDestination = {
@@ -65,6 +68,9 @@ export async function saveBusinessProfile(
   const welcomeMessage = String(formData.get("message") ?? "").trim();
   const invitationMessage = String(formData.get("invitationMessage") ?? "").trim();
   const rawPayload = formData.get("destinations");
+  // Only the explicit last-link confirmation in ProfileEditor should set this.
+  // The database independently checks it under a lock before unpublishing.
+  const confirmUnpublish = formData.get("confirmUnpublish") === "true";
 
   if (!name || name.length > 120) return { error: "Business name must be 1–120 characters.", success: "" };
   if (logoText.length > 12) return { error: "Logo text cannot exceed 12 characters.", success: "" };
@@ -144,8 +150,12 @@ export async function saveBusinessProfile(
   if (lookupError || !ownedBusiness) {
     return { error: "You are not authorised to edit this business.", success: "" };
   }
-  if (ownedBusiness.is_published && destinations.length === 0) {
-    return { error: "Unpublish your profile before removing its final review destination.", success: "", submittedPayload: rawPayload };
+  if (ownedBusiness.is_published && destinations.length === 0 && !confirmUnpublish) {
+    return {
+      error: "Removing the final review destination will unpublish your page. Confirm the removal before saving.",
+      success: "",
+      submittedPayload: rawPayload,
+    };
   }
 
   // Database URL policy is authoritative; identify the exact invalid row.
@@ -168,13 +178,14 @@ export async function saveBusinessProfile(
     return { error: "Please correct the highlighted destinations before saving.", success: "", fieldErrors, submittedPayload: rawPayload };
   }
 
-  const { error: saveError } = await supabase.rpc("save_business_profile_v2", {
+  const { data: autoUnpublished, error: saveError } = await supabase.rpc("save_business_profile_v3", {
     p_business_id: businessId,
     p_name: name,
     p_logo_text: logoText,
     p_welcome_message: welcomeMessage,
     p_invitation_message: invitationMessage,
     p_review_links: destinations.map(({ id, platform, url }) => ({ ...(id ? { id } : {}), platform, url })),
+    p_confirm_unpublish: confirmUnpublish,
   });
 
   if (saveError) {
@@ -183,24 +194,40 @@ export async function saveBusinessProfile(
       return { error: "Destination names must currently be unique. Use a different name for each link.", success: "", submittedPayload: rawPayload };
     }
     if (saveError.code === "23514") {
-      return { error: "A database safety rule rejected this change. Check the destination URLs and publication status.", success: "", submittedPayload: rawPayload };
+      return {
+        error: "A database safeguard rejected this save. If removing the final destination, confirm that your review page will be unpublished. Otherwise check the destinations and URLs.",
+        success: "",
+        submittedPayload: rawPayload,
+      };
     }
     return { error: "Unable to save your profile. Please try again.", success: "", submittedPayload: rawPayload };
   }
 
   // Returning database-generated UUIDs matters: otherwise saving again without
   // reloading would recreate new destinations rather than updating them.
-  const { data: saved, error: refreshError } = await supabase
-    .from("review_links")
-    .select("id, platform, url")
-    .eq("business_id", businessId)
-    .order("display_order", { ascending: true });
+  const [destinationResult, publicationResult] = await Promise.all([
+    supabase.from("review_links")
+      .select("id, platform, url")
+      .eq("business_id", businessId)
+      .order("display_order", { ascending: true }),
+    supabase.from("businesses")
+      .select("is_published")
+      .eq("id", businessId)
+      .eq("owner_id", authData.claims.sub)
+      .single(),
+  ]);
 
-  if (refreshError) {
-    console.error("Profile saved but destination refresh failed:", refreshError);
+  // The RPC has already committed. If verification fails, DON'T claim the
+  // editor is synchronized, and prevent another save with stale/new row IDs.
+  if (destinationResult.error || publicationResult.error || !publicationResult.data) {
+    console.error("Profile save could not be verified:", destinationResult.error, publicationResult.error);
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/edit");
+    revalidatePath(`/r/${ownedBusiness.slug}`);
     return {
-      error: "",
-      success: "Saved successfully. Reload this page before making more changes.",
+      error: "Your save may have succeeded, but we couldn't verify it. Reload the editor before making further changes.",
+      success: "",
+      requiresReload: true,
     };
   }
 
@@ -208,5 +235,13 @@ export async function saveBusinessProfile(
   revalidatePath("/dashboard/edit");
   revalidatePath(`/r/${ownedBusiness.slug}`);
 
-  return { error: "", success: "Profile saved successfully.", savedDestinations: saved ?? [] };
+  return {
+    error: "",
+    success: autoUnpublished
+      ? "Profile saved. Your review page was unpublished because it has no review destinations."
+      : "Profile saved successfully.",
+    savedDestinations: destinationResult.data ?? [],
+    isPublished: publicationResult.data.is_published,
+    autoUnpublished: autoUnpublished === true,
+  };
 }

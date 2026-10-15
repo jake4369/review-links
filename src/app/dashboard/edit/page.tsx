@@ -10,7 +10,7 @@ export default async function EditProfilePage() {
 
   const { data: record, error: businessError } = await supabase
     .from("businesses")
-    .select("id, name, slug, logo_text, welcome_message, invitation_message")
+    .select("id, name, slug, logo_text, welcome_message, invitation_message, is_published")
     .eq("owner_id", authData.claims.sub)
     .order("created_at", { ascending: true })
     .limit(1)
@@ -37,6 +37,7 @@ export default async function EditProfilePage() {
         logoText: record.logo_text,
         message: record.welcome_message,
         invitationMessage: record.invitation_message,
+        isPublished: record.is_published,
       }}
       destinations={links ?? []}
     />
