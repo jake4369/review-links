@@ -61,7 +61,7 @@ export default function Home() {
 
           {/* Customer page preview */}
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/50 sm:p-10">
-            <p className="mb-8 text-centre text-xs font-semibold tracking-widest text-slate-400">
+            <p className="mb-8 text-center text-xs font-semibold tracking-widest text-slate-600">
               EXAMPLE REVIEW PAGE
             </p>
 
@@ -90,7 +90,7 @@ export default function Home() {
                 ))}
               </div>
 
-              <p className="mt-6 text-xs text-slate-400">
+              <p className="mt-6 text-xs text-slate-600">
                 Example only - links coming soon
               </p>
             </div>
