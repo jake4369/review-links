@@ -1,82 +1,50 @@
-# ReviewLinks — Phase 3.2: Dynamic Review Destinations
+# ReviewLinks — Phase 3.3: Accessible Ordering & Safer Removal
 
-## Prerequisites
+This package is built from the **Phase 3.2 ProfileEditor.tsx** used in the previous ReviewLinks update. It intentionally contains only one modified source file:
 
-- Phase 3.1 migration is installed and **all 10 checks passed**.
-- PostgreSQL function `public.save_business_profile_v2(uuid,text,text,text,text,jsonb)` exists and grants EXECUTE to `authenticated`.
-- The existing `review_destination_is_valid(text,text)` function and URL CHECK constraint remain in place.
-- Your current app is based on the prior Step 4C package and inline URL validation patch.
+- `src/components/ProfileEditor.tsx`
 
-This ZIP updates the existing dynamic editor; it is based on those previously delivered files, not a live checkout of your Mac. **Review your diff before applying.**
+## What changed
 
-## Very important: one-line type change before applying the ZIP
-
-Open `src/lib/businesses.ts`. Change the `ReviewLink` platform property from this:
-
-```ts
-platform: "Google" | "Trustpilot" | "Facebook";
-```
-
-to:
-
-```ts
-platform: string;
-```
-
-Keep the rest of `src/lib/businesses.ts` unchanged. This allows the owner dashboard to display and publish businesses using custom destinations. Do not delete the hardcoded demo business; the homepage may still use it.
-
-## Files in this ZIP
-
-- `src/components/ProfileEditor.tsx` — adds/removes up to ten custom destinations, with editable names, URL fields, inline validation and accessibility attributes. Existing links retain database UUIDs after saving.
-- `src/app/dashboard/edit/actions.ts` — authenticated server save action, with row-specific feedback and `save_business_profile_v2` RPC.
-- `src/app/dashboard/edit/page.tsx` — loads all destinations, including their permanent UUIDs, from PostgreSQL.
-- `src/app/dashboard/page.tsx` — loads all destinations for the owner dashboard, not just Google/Trustpilot/Facebook.
-- `src/lib/review-destination-validation.ts` — same client-side URL validator as the previously tested inline-validation patch; included for completeness.
+1. **Accessible ordering.** Up and Down controls update the form order. First/last actions are disabled as appropriate; each button has a descriptive accessible name. After movement, a live announcement describes the new position. Keyboard focus follows the moved destination.
+2. **Removal confirmation.** `Remove` now opens an inline confirmation with `Yes, remove` and `Keep destination`. Removing changes only the unsaved editor state. Business data is not deleted until Save Changes is successful.
+3. **Clear removal states.** Previously saved destinations marked for removal appear in an unsaved-changes notice. Following a successful save and re-fetch of database records, an on-screen notification confirms how many destinations were removed.
+4. **Immediately visible feedback.** Success, failure, and informational notifications appear in a fixed, dismissible, screen-reader-announced banner at the top of the viewport; users no longer have to scroll below Save Changes to see a result.
+5. **Unchanged security/validation.** The existing save Server Action and Supabase `save_business_profile_v2()` function are retained, along with field-specific URL validation, the 10-destination limit, publication safeguards and UUID preservation.
 
 ## Install
 
-1. Stop `npm run dev` or `npm run start` if running.
-2. Save a Git checkpoint:
+**Commit your current working app first**, or back up `src/components/ProfileEditor.tsx`.
+
+From your Next.js project root:
 
 ```bash
-git add . && git commit -m "Checkpoint before Phase 3.2 dynamic review destinations"
-```
-
-3. Make the **one-line type change** above to `src/lib/businesses.ts`.
-4. Extract this ZIP in the root of your `review-links-app` directory, preserving `src/...` paths. Example, after downloading to `~/Downloads`:
-
-```bash
-unzip -o ~/Downloads/reviewlinks-phase-3-2.zip -d .
-```
-
-5. Run:
-
-```bash
+cd ~/Documents/review-links-app
+unzip -o ~/Downloads/reviewlinks-phase-3-3.zip -d .
 npm run lint
 npx tsc --noEmit
 npm run build
-npm run dev
 ```
 
-**Do not drop `review_links_unique_platform_idx` or remove the original `save_business_profile` function yet.** The old editor/function might still be needed for rollback. Until they are retired, give each destination a distinct platform name (e.g., `Google — Wolverhampton` and `Google — Birmingham`).
+No SQL changes or additional npm packages are required.
 
-## Testing — please do this before Phase 3.3
+## Verify, preferably using `testbus`
 
-1. Sign in as DevXDesign. Check that the two existing destination records display correctly in `/dashboard/edit`.
-2. Add **Checkatrade**, using a *genuine* HTTPS review URL. Save and refresh; it must remain and show a UUID in Supabase.
-3. Add another custom service; save again **without refreshing**. Verify the Checkatrade UUID didn't change (the server action returns new IDs and updates the editor state).
-4. Change an existing destination's display name and URL. Save; its UUID must be retained.
-5. Remove one destination, save, refresh and confirm it is gone.
-6. Attempt to add an eleventh destination: the Add button must be disabled at ten.
-7. Test an invalid URL such as `https://google.com.example.org/review`: highlight the offending field and reject the save. Other fields should remain unsaved (atomic transaction).
-8. Test duplicate platform names: the editor must explain the temporary unique-name restriction.
-9. Confirm the public review page lists the newly added destinations and their hostnames.
-10. Confirm the dashboard can publish a draft whose **only** destination is custom (e.g., Checkatrade). You may want to use the `testbus` account.
-11. Verify a published business cannot save with zero destinations.
-12. Verify that Account B cannot modify Account A's review destinations.
+1. **Cancel removal:** Select Remove for a destination, then `Keep destination`. It must stay in the editor and in Supabase.
+2. **Confirm removal:** Select Remove > `Yes, remove`. The destination disappears from the form, but the UI must say its deletion is **pending until Save Changes**. Refresh **without** saving to verify the persisted destination returns.
+3. **Save a removal:** Repeat the removal, then save. The top notification must say a destination was successfully removed; refresh and check it is gone. Do this with a draft or with a published profile that has more than one destination.
+4. **Protect last link:** When published, removing the last configured link and pressing Save should show an error immediately. PostgreSQL must retain that link.
+5. **Reorder:** With at least two destinations, use Up/Down, save, refresh the editor, and inspect the public page. The order must persist and reflect `display_order`.
+6. **Check stable UUIDs:** Use Supabase SQL Editor before/after reorder; `id` values must not change, only `display_order`.
+7. **Keyboard:** Tab through the controls and activate Up/Down and confirmation buttons with Enter/Space. Check focus stays usable and position changes are announced by VoiceOver.
+8. **Save result at the top:** Save successfully while scrolled near the bottom of the editor; confirm the notification is visible without scrolling. Then deliberately use an invalid destination URL to verify that an error notification is also visible.
+9. **Regression:** Test adding a custom destination, editing URLs, reloading saved fields, QR sharing, publishing, and `npm run lint`, `npx tsc --noEmit`, `npm run build`.
 
-**Known limitations:** Reordering controls are reserved for Phase 3.3; records currently appear in their current order with additions appended. The unique-platform-name index remains until a later coordinated cutover. Production domain/QR deployment remains pending.
+## Expected behaviour and limitations
 
-## Recovering from a failed installation
-
-Use your Git checkpoint to restore the four modified files and the one-line type change. The old `save_business_profile` function is intentionally still installed; no SQL changes are needed for Phase 3.2.
+- Removing an **unsaved new row** only discards that row; no database deletion occurs.
+- Removing a **previously saved row** is staged until Save Changes and database success. There is no claim of completed deletion beforehand.
+- An interrupted save or failure to refresh saved records is **not** presented as a confirmed deletion; check the database state/reload before retrying.
+- Reordering is also staged until Save Changes and uses the same v2 RPC, which derives `display_order` from list order.
+- The old `review_links_unique_platform_idx` index still enforces distinct platform names; do not drop it during Phase 3.3. We will remove it during the coordinated legacy function cutover later.
+- A full local Next.js build was not possible from this isolated source package; the TSX passed TypeScript **syntax** validation. Run the project checks shown above.

@@ -86,6 +86,12 @@ export default function ProfileEditor({
   const [attemptedSave, setAttemptedSave] = useState(false);
   const [response, setResponse] = useState<SaveProfileState>({ error: "", success: "" });
   const [pending, startTransition] = useTransition();
+  const [confirmationKey, setConfirmationKey] = useState<string | null>(null);
+  const [removedSavedIds, setRemovedSavedIds] = useState<string[]>([]);
+  const [orderChanged, setOrderChanged] = useState(false);
+  const [infoMessage, setInfoMessage] = useState("");
+  const [noticeDismissed, setNoticeDismissed] = useState(false);
+  const [orderingAnnouncement, setOrderingAnnouncement] = useState("");
 
   const shareUrl = useReviewPageUrl(business.slug);
   const fullMessage = [
@@ -126,12 +132,82 @@ export default function ProfileEditor({
     const key = `new-${crypto.randomUUID()}`;
     setRows((previous) => [...previous, { clientKey: key, platform: "", url: "" }]);
     setResponse({ error: "", success: "" });
+    setInfoMessage("");
+    setNoticeDismissed(false);
+    window.requestAnimationFrame(() => {
+      document.getElementById(`${key}-platform`)?.focus();
+    });
   }
 
-  function removeDestination(clientKey: string) {
+  // Nothing is removed until the owner confirms. Confirmation changes only
+  // the unsaved editor state; PostgreSQL is updated by Save Changes.
+  function requestRemoval(row: EditableDestination) {
     if (pending) return;
-    setRows((previous) => previous.filter((row) => row.clientKey !== clientKey));
+    setConfirmationKey(row.clientKey);
+    setInfoMessage("");
+    setNoticeDismissed(false);
+    window.requestAnimationFrame(() => {
+      document.getElementById(`confirm-${row.clientKey}`)?.focus();
+    });
+  }
+
+  function confirmRemoval(row: EditableDestination) {
+    if (pending) return;
+    const index = rows.findIndex((item) => item.clientKey === row.clientKey);
+    const focusTarget = rows[index + 1] ?? rows[index - 1];
+    setRows((previous) => previous.filter((item) => item.clientKey !== row.clientKey));
+    const savedId = row.id;
+    if (savedId) {
+      setRemovedSavedIds((previous) => previous.includes(savedId) ? previous : [...previous, savedId]);
+      setInfoMessage(`${row.platform || "Destination"} removed from the editor. Save Changes to apply this removal.`);
+    } else {
+      setInfoMessage("Unsaved destination discarded. No database record was removed.");
+    }
+    setConfirmationKey(null);
+    setNoticeDismissed(false);
     setResponse({ error: "", success: "" });
+    setOrderingAnnouncement("");
+    window.requestAnimationFrame(() => {
+      document.getElementById(focusTarget ? `remove-${focusTarget.clientKey}` : "add-review-destination")?.focus();
+    });
+  }
+
+  function cancelRemoval() {
+    const clientKey = confirmationKey;
+    setConfirmationKey(null);
+    setInfoMessage("Removal cancelled. The destination has been kept.");
+    setNoticeDismissed(false);
+    window.requestAnimationFrame(() => {
+      if (clientKey) document.getElementById(`remove-${clientKey}`)?.focus();
+    });
+  }
+
+  // Arrow buttons work with mouse, touch, keyboard and assistive technology.
+  // The order of this array is the order the existing v2 RPC saves to display_order.
+  function moveDestination(clientKey: string, direction: -1 | 1) {
+    if (pending || confirmationKey) return;
+    const index = rows.findIndex((row) => row.clientKey === clientKey);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= rows.length) return;
+    const row = rows[index];
+    setRows((previous) => {
+      const reordered = [...previous];
+      [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
+      return reordered;
+    });
+    setOrderChanged(true);
+    setResponse({ error: "", success: "" });
+    setInfoMessage("Review destination order changed. Save Changes to apply it.");
+    setNoticeDismissed(false);
+    setOrderingAnnouncement(`${row.platform || "Destination"} moved to position ${target + 1} of ${rows.length}.`);
+
+    // Don't leave keyboard focus on a now-disabled first/last arrow.
+    const nextDirection = (direction === -1 && target === 0) ? "down"
+      : (direction === 1 && target === rows.length - 1) ? "up"
+      : (direction === -1 ? "up" : "down");
+    window.requestAnimationFrame(() => {
+      document.getElementById(`move-${nextDirection}-${clientKey}`)?.focus();
+    });
   }
 
   function updateDestination(clientKey: string, field: InputName, value: string) {
@@ -139,6 +215,8 @@ export default function ProfileEditor({
       previous.map((row) => row.clientKey === clientKey ? { ...row, [field]: value } : row),
     );
     setResponse({ error: "", success: "" });
+    setInfoMessage("");
+    setNoticeDismissed(false);
   }
 
   function markTouched(clientKey: string, field: InputName) {
@@ -148,6 +226,13 @@ export default function ProfileEditor({
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending) return;
+    setNoticeDismissed(false);
+    setInfoMessage("");
+    if (confirmationKey) {
+      setResponse({ error: "Confirm or cancel the destination removal before saving.", success: "" });
+      document.getElementById(`confirm-${confirmationKey}`)?.focus();
+      return;
+    }
     setAttemptedSave(true);
     setResponse({ error: "", success: "" });
 
@@ -158,6 +243,7 @@ export default function ProfileEditor({
 
     if (invalidRow) {
       const invalidField: InputName = validateRow(invalidRow, rows).platform ? "platform" : "url";
+      setResponse({ error: "Correct the highlighted review destinations before saving.", success: "" });
       document.getElementById(`${invalidRow.clientKey}-${invalidField}`)?.focus();
       return;
     }
@@ -167,14 +253,26 @@ export default function ProfileEditor({
 
     startTransition(async () => {
       try {
+        const removalCount = removedSavedIds.length;
         const result = await saveBusinessProfile(businessId, formData);
-        setResponse(result);
         if (result.success && result.savedDestinations) {
-          // Store new database-assigned IDs immediately, including for newly
-          // created links, so a second save updates rather than recreates them.
+          // An actual server success plus refreshed DB rows confirms removal.
+          // Do not claim an unsaved form edit is a completed deletion.
+          setResponse({
+            ...result,
+            success: removalCount > 0
+              ? `Profile saved. ${removalCount} review destination${removalCount === 1 ? "" : "s"} successfully removed.`
+              : result.success,
+          });
           setRows(initialRows(result.savedDestinations));
+          setRemovedSavedIds([]);
+          setOrderChanged(false);
           setTouched({});
           setAttemptedSave(false);
+        } else {
+          // In particular, an uncertain refresh must not be reported as a
+          // confirmed deletion: follow the server's reload instruction.
+          setResponse(result);
         }
       } catch (error) {
         console.error("Profile save request failed:", error);
@@ -186,6 +284,33 @@ export default function ProfileEditor({
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900">
       <div className="mx-auto max-w-2xl">
+        {/* Always visible on mobile or desktop, even when Save is below the fold. */}
+        {!noticeDismissed && (response.error || response.success || infoMessage) && (
+          <div
+            role={response.error ? "alert" : "status"}
+            aria-atomic="true"
+            className={`fixed left-4 right-4 top-4 z-50 mx-auto flex max-w-xl items-start gap-3 rounded-xl border p-4 text-sm shadow-lg ${
+              response.error
+                ? "border-red-300 bg-red-50 text-red-900"
+                : response.success
+                  ? "border-green-300 bg-green-50 text-green-900"
+                  : "border-blue-300 bg-blue-50 text-blue-900"
+            }`}
+          >
+            <p className="min-w-0 flex-1">{response.error || response.success || infoMessage}</p>
+            <button
+              type="button"
+              onClick={() => setNoticeDismissed(true)}
+              aria-label="Dismiss notification"
+              className="shrink-0 rounded-md px-2 py-1 font-semibold underline focus-visible:outline-2 focus-visible:outline-offset-2"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+        <div role="status" aria-live="polite" className="sr-only">
+          {orderingAnnouncement}
+        </div>
         <Link href="/dashboard" className="text-sm font-medium text-blue-600 hover:underline">
           ← Back to dashboard
         </Link>
@@ -230,6 +355,15 @@ export default function ProfileEditor({
               Suggestions: Google, Trustpilot, Facebook, Checkatrade, Tripadvisor, Feefo, Reviews.io.
               You can type another platform name instead.
             </p>
+            {(removedSavedIds.length > 0 || orderChanged) && (
+              <p role="status" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                Unsaved changes: {removedSavedIds.length > 0
+                  ? `${removedSavedIds.length} saved destination${removedSavedIds.length === 1 ? "" : "s"} marked for removal. `
+                  : ""}
+                {orderChanged ? "Destination order changed. " : ""}
+                Select Save Changes to apply these updates.
+              </p>
+            )}
             <datalist id="reviewlinks-platform-suggestions">
               {['Google', 'Trustpilot', 'Facebook', 'Checkatrade', 'Tripadvisor', 'Feefo', 'Reviews.io', 'Yelp']
                 .map((name) => <option key={name} value={name} />)}
@@ -255,12 +389,54 @@ export default function ProfileEditor({
                   <div key={row.clientKey} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <h3 className="font-semibold text-sm">Destination {index + 1}</h3>
-                      <button type="button" disabled={pending} onClick={() => removeDestination(row.clientKey)}
-                        aria-label={`Remove destination ${index + 1}${row.platform ? `: ${row.platform}` : ''}`}
-                        className="rounded-lg px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:opacity-50">
-                        Remove
-                      </button>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <button
+                          id={`move-up-${row.clientKey}`}
+                          type="button"
+                          disabled={pending || Boolean(confirmationKey) || index === 0}
+                          onClick={() => moveDestination(row.clientKey, -1)}
+                          aria-label={`Move ${row.platform || `destination ${index + 1}`} up`}
+                          className="rounded-lg px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-40"
+                        >
+                          ↑ Up
+                        </button>
+                        <button
+                          id={`move-down-${row.clientKey}`}
+                          type="button"
+                          disabled={pending || Boolean(confirmationKey) || index === rows.length - 1}
+                          onClick={() => moveDestination(row.clientKey, 1)}
+                          aria-label={`Move ${row.platform || `destination ${index + 1}`} down`}
+                          className="rounded-lg px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-40"
+                        >
+                          ↓ Down
+                        </button>
+                        <button id={`remove-${row.clientKey}`} type="button" disabled={pending || Boolean(confirmationKey)} onClick={() => requestRemoval(row)}
+                          aria-label={`Remove destination ${index + 1}${row.platform ? `: ${row.platform}` : ''}`}
+                          className="rounded-lg px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:opacity-50">
+                          Remove
+                        </button>
+                      </div>
                     </div>
+
+                    {confirmationKey === row.clientKey && (
+                      <div role="group" aria-label={`Confirm removal of ${row.platform || `destination ${index + 1}`}`}
+                        className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3">
+                        <p className="font-semibold text-sm text-red-900">Remove {row.platform || `destination ${index + 1}`}?</p>
+                        <p className="mt-1 text-sm text-red-800">
+                          This removes the destination from the editor. It will not be deleted from your saved profile until you select Save Changes.
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <button id={`confirm-${row.clientKey}`} type="button" onClick={() => confirmRemoval(row)}
+                            className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800 focus-visible:outline-2 focus-visible:outline-offset-2">
+                            Yes, remove
+                          </button>
+                          <button type="button" onClick={cancelRemoval}
+                            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2">
+                            Keep destination
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="mt-4">
                       <label htmlFor={`${row.clientKey}-platform`} className="text-sm font-medium">Platform name</label>
@@ -290,7 +466,7 @@ export default function ProfileEditor({
               })}
             </div>
 
-            <button type="button" onClick={addDestination}
+            <button id="add-review-destination" type="button" onClick={addDestination}
               disabled={pending || rows.length >= MAX_DESTINATIONS}
               className="mt-5 w-full rounded-xl border border-blue-300 bg-blue-50 px-5 py-3 font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50">
               + Add Review Destination
@@ -323,12 +499,6 @@ export default function ProfileEditor({
             {pending ? "Saving..." : "Save Changes"}
           </button>
 
-          {response.error && (
-            <p role="alert" className="rounded-xl bg-red-50 p-4 text-center text-sm text-red-700">{response.error}</p>
-          )}
-          {response.success && (
-            <p role="status" className="rounded-xl bg-green-50 p-4 text-center text-sm text-green-800">{response.success}</p>
-          )}
         </form>
       </div>
     </main>
