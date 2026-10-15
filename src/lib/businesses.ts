@@ -1,5 +1,5 @@
 export type ReviewLink = {
-  platform: "Google" | "Trustpilot" | "Facebook";
+  platform: string;
   url: string | null;
 };
 
