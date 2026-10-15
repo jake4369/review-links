@@ -1,49 +1,47 @@
-# ReviewLinks — Phase 3.3 Notification Refinement
+# ReviewLinks — bottom Dashboard button (post-Phase 3.4 UX refinement)
 
-This is a focused follow-up to the **Phase 3.3 Accessible Destination Ordering & Safer Removal** update.
+This is an incremental update to the **Phase 3.3 Notifications** version of `src/components/ProfileEditor.tsx`.
 
 ## What changed
 
-Only `src/components/ProfileEditor.tsx` is replaced. All ordering, confirmation, URL validation, Supabase calls and UUID-based saving remain in place.
+- Added **Back to dashboard** beside **Save Changes** at the bottom of the editor. The buttons stack on small screens and sit side by side on wider screens.
+- The existing **Back to dashboard** link at the top remains.
+- Both dashboard links warn before discarding **unsaved changes**. Choosing Cancel leaves the user in the editor; choosing OK leaves without saving.
+- While a save request is pending, dashboard navigation from either link is prevented.
+- Reloading or closing the tab with unsaved changes triggers the browser's standard unsaved-changes warning (where supported).
+- A successful server save clears the unsaved-changes flag, so the bottom dashboard link navigates without a warning.
+- The existing six-second success notifications, persistent errors and small **Saved to your profile** indicator remain unchanged.
 
-- **Successful saves** display a top-of-screen confirmation for **6 seconds**, then disappear automatically. No click is required.
-- **Routine information** (e.g. cancellation of a removal) also disappears after **6 seconds**.
-- **Errors** remain visible until dismissed or corrected. Error notifications keep a Dismiss button; success notifications do not need one.
-- **Pending deletion and ordering** are still identified in the persistent inline *Unsaved changes* warning until the changes are saved or the form is abandoned.
-- **Completed deletion** is reported only after successful saving and reloading from the database.
-- A subtle **✓ Saved to your profile** indicator appears below the Save Changes button after successful saving. It disappears when the form is edited, a destination is removed/added, or its order changes.
-- The notification remains a polite live announcement for success/info and an alert for errors.
+## Install
 
-## Installation
-
-Before extracting, create a Git checkpoint or save a copy of your current `src/components/ProfileEditor.tsx`.
-
-From the project root:
+Create a Git checkpoint first, then extract the ZIP **at your Next.js project root**:
 
 ```bash
 cd ~/Documents/review-links-app
-unzip -o ~/Downloads/reviewlinks-phase-3-3-notifications.zip -d .
+git add .
+git commit -m "Phase 3.4 signed off before bottom dashboard navigation"
+unzip -o ~/Downloads/reviewlinks-bottom-dashboard-button.zip -d .
 npm run lint
 npx tsc --noEmit
 npm run build
 ```
 
-No SQL changes or additional npm packages are required.
+Only `src/components/ProfileEditor.tsx` is replaced. No SQL or new npm dependencies are required.
 
-## Manual tests (use `testbus`)
+## Tests
 
-1. Save a valid change. Verify the top success notification appears **immediately**, then disappears after approximately **6 seconds** without needing to dismiss it.
-2. Check the small *Saved to your profile* indicator remains near Save Changes. Edit any field or reorder/remove/add a destination; verify it clears.
-3. Enter an invalid review URL and try to save. The error message should **remain beyond 6 seconds** and the affected input should still be highlighted until corrected. You may dismiss the top error manually; field-level errors remain.
-4. Click Remove on a saved destination, then confirm. Check that the **Unsaved changes** warning stays visible after the top informational message disappears. Refresh without saving: the record should reappear.
-5. Repeat removal, then save. Verify the top notification reports a completed removal **only after** success. Check the record is absent after refresh.
-6. Click Remove > Keep destination. The short information message should disappear automatically; the link should remain.
-7. Try Move Up / Move Down, save and refresh. Check the public review page displays the new order and UUIDs remain stable.
-8. With a published profile, attempt to remove its last link. Verify the save fails and the error does not auto-dismiss.
-9. Test on mobile, with keyboard and VoiceOver; run `npm run lint`, `npx tsc --noEmit`, and `npm run build`.
+1. Load `/dashboard/edit` and scroll down: the two buttons should be visible on mobile and desktop.
+2. With no changes made, click **Back to dashboard** at the bottom: should navigate without a warning.
+3. Edit the welcome message without saving; click the **bottom** dashboard button. **Cancel** should keep you on the editor; **OK** should leave without saving.
+4. Repeat using the **top** dashboard link.
+5. Edit a destination URL, confirm removal, and reorder destinations separately; each should count as unsaved changes.
+6. Save a valid change: the small saved indicator should appear. The bottom dashboard link should return to the dashboard without a warning.
+7. Make an additional edit after saving: the saved indicator should disappear and the leave warning should return.
+8. Refresh the browser tab with unsaved edits: the browser should warn before discarding the edits (browser behavior varies).
+9. Confirm the 6-second success notice, persistent errors, removal confirmation, saved order and public review page still work.
 
-## Scope and limitations
+## Validation and scope
 
-The supplied TSX component passed TypeScript syntax/transpilation checks, but it was **not** compiled against your local Next.js project and connected Supabase instance. Complete the tests above.
+This file passed TypeScript TSX syntax/transpilation checks in the authoring environment, but has **not** been compiled against your local Next.js project or exercised against live Supabase data. Run the three checks above and the browser tests.
 
-The original `review_links_unique_platform_idx` restriction is unchanged; do not remove it until the coordinated legacy function cutover in the next phase.
+Phase 3.5 legacy database cleanup is **not** included here. Do not drop the old save function or unique index yet.

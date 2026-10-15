@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import type { SubmitEvent } from "react";
+import type { MouseEvent, SubmitEvent } from "react";
 import Link from "next/link";
 import {
   saveBusinessProfile,
@@ -93,6 +93,7 @@ export default function ProfileEditor({
   const [noticeDismissed, setNoticeDismissed] = useState(false);
   const [noticeVersion, setNoticeVersion] = useState(0);
   const [saveConfirmed, setSaveConfirmed] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [orderingAnnouncement, setOrderingAnnouncement] = useState("");
 
   // Short confirmations disappear automatically; errors remain until
@@ -104,6 +105,32 @@ export default function ProfileEditor({
     return () => window.clearTimeout(timeout);
   }, [response.error, response.success, infoMessage, noticeVersion]);
 
+  // Warn when closing or refreshing the tab while edits have not been saved.
+  // Next.js Link handles client-side navigation, so links use the same guard
+  // explicitly below.
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  function handleDashboardNavigation(event: MouseEvent<HTMLAnchorElement>) {
+    if (pending) {
+      event.preventDefault();
+      return;
+    }
+    if (
+      hasUnsavedChanges &&
+      !window.confirm("You have unsaved changes. Leave this page without saving them?")
+    ) {
+      event.preventDefault();
+    }
+  }
+
   function revealNotice() {
     setNoticeDismissed(false);
     setNoticeVersion((previous) => previous + 1);
@@ -111,6 +138,7 @@ export default function ProfileEditor({
 
   function markUnsaved() {
     setSaveConfirmed(false);
+    setHasUnsavedChanges(true);
   }
 
   const shareUrl = useReviewPageUrl(business.slug);
@@ -292,6 +320,7 @@ export default function ProfileEditor({
           setRows(initialRows(result.savedDestinations));
           setRemovedSavedIds([]);
           setSaveConfirmed(true);
+          setHasUnsavedChanges(false);
           setOrderChanged(false);
           setTouched({});
           setAttemptedSave(false);
@@ -342,13 +371,20 @@ export default function ProfileEditor({
         <div role="status" aria-live="polite" className="sr-only">
           {orderingAnnouncement}
         </div>
-        <Link href="/dashboard" className="text-sm font-medium text-blue-600 hover:underline">
+        <Link href="/dashboard" onClick={handleDashboardNavigation} aria-disabled={pending} className="text-sm font-medium text-blue-600 hover:underline">
           ← Back to dashboard
         </Link>
         <h1 className="mt-6 text-3xl font-bold">Edit Business Profile</h1>
         <p className="mt-2 text-slate-600">Manage your business details and review destinations.</p>
 
-        <form onSubmit={handleSubmit} onChange={() => setSaveConfirmed(false)} className="mt-8 space-y-6">
+        <form
+          onSubmit={handleSubmit}
+          onChange={() => {
+            setSaveConfirmed(false);
+            setHasUnsavedChanges(true);
+          }}
+          className="mt-8 space-y-6"
+        >
           <section className="rounded-2xl border border-slate-200 bg-white p-6">
             <h2 className="text-xl font-semibold">Business Details</h2>
             <div className="mt-6">
@@ -526,12 +562,27 @@ export default function ProfileEditor({
           </section>
 
           <div>
-            <button type="submit" disabled={pending}
-              className="w-full rounded-xl bg-blue-600 px-6 py-4 font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
-              {pending ? "Saving..." : "Save Changes"}
-            </button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                type="submit"
+                disabled={pending}
+                className="w-full rounded-xl bg-blue-600 px-6 py-4 font-semibold text-white hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 sm:flex-1"
+              >
+                {pending ? "Saving..." : "Save Changes"}
+              </button>
+              <Link
+                href="/dashboard"
+                onClick={handleDashboardNavigation}
+                aria-disabled={pending}
+                className={`inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-6 py-4 text-center font-semibold text-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 sm:flex-1 ${
+                  pending ? "cursor-not-allowed opacity-50" : "hover:bg-slate-100"
+                }`}
+              >
+                ← Back to dashboard
+              </Link>
+            </div>
             {saveConfirmed && (
-              <p className="mt-2 text-center text-sm font-medium text-green-800">
+              <p className="mt-3 text-center text-sm font-medium text-green-800" role="status">
                 ✓ Saved to your profile
               </p>
             )}
