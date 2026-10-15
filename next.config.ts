@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
         as: "*.css",
       },
     },
+    root: process.cwd(),
   },
 };
 
