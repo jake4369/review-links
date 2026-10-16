@@ -24,7 +24,7 @@ export default function Home() {
         {/* NAVIGATION */}
         <header className="flex items-centre justify-between py-6">
           <span className="text-xl font-bold tracking-tight">
-            Review<span className="text-blue-600">Links</span>
+            Review<span className="text-blue-600">Branch</span>
           </span>
 
           <a
@@ -91,7 +91,7 @@ export default function Home() {
               </div>
 
               <p className="mt-6 text-xs text-slate-600">
-                Example only - links coming soon
+                Example preview — create your own review page in minutes.
               </p>
             </div>
           </div>
@@ -127,7 +127,7 @@ export default function Home() {
         </section>
 
         <footer className="border-t border-slate-200 py-8 text-centre text-sm text-slate-500">
-          ReviewLinks - Making reviews easier.
+          ReviewBranch - Making reviews easier.
         </footer>
       </div>
     </main>

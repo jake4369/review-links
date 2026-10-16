@@ -23,7 +23,7 @@ export default async function DashboardLayout({
       <nav className="border-b border-slate-200 bg-white px-4 py-4">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
           <span className="text-sm font-semibold text-slate-900">
-            ReviewLinks
+            ReviewBranch
           </span>
 
           <form action={signOut}>

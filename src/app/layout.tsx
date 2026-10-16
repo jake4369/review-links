@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ReviewLinks | Simple Review Sharing",
+  title: "ReviewBranch | Simple Review Sharing",
   description:
     "Make it easy for your customers to leave a review. Share all your business review links in one place.",
 };

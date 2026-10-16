@@ -252,7 +252,7 @@ export default function BusinessDashboard({
         )}
 
         <footer className="mt-10 text-center text-xs text-slate-600">
-          ReviewLinks — Making reviews easier.
+          ReviewBranch — Making reviews easier.
         </footer>
       </div>
     </main>

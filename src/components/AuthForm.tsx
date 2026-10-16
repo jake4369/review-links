@@ -102,7 +102,7 @@ export default function AuthForm() {
         <div className="mb-8 text-center">
           <Link href="/" className="text-2xl font-bold tracking-tight">
             Review
-            <span className="text-blue-600">Links</span>
+            <span className="text-blue-600">Branch</span>
           </Link>
         </div>
 
