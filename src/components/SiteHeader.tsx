@@ -148,13 +148,17 @@ export default function SiteHeader() {
           Review<span className="text-blue-600">Branch</span>
         </Link>
 
-        {/* Desktop: all navigation and account actions shown directly, no hamburger. */}
+        {/* Desktop: site navigation stays centred independently of account actions. */}
         <nav aria-label="Main navigation" className="hidden items-center justify-center gap-4 lg:flex">
           {SITE_LINKS.map(({ label, href }) => (
             <Link key={href} href={href} className={linkStyle}>
               {label}
             </Link>
           ))}
+        </nav>
+
+        {/* Desktop: account controls stay on the far right of the header container. */}
+        <div className="hidden items-center justify-end gap-2 lg:flex">
           {signedOut && (
             <Link ref={desktopLoginRef} href="/login" className={primaryStyle}>
               Log in
@@ -176,8 +180,7 @@ export default function SiteHeader() {
           {authState === "checking" && (
             <span role="status" aria-label="Checking sign-in status" className="h-11 w-20 animate-pulse rounded-lg bg-slate-100 motion-reduce:animate-none" />
           )}
-        </nav>
-        <div className="hidden lg:block" aria-hidden="true" />
+        </div>
 
         {/* Mobile/tablet: only the logo and menu trigger remain visible. */}
         <div className="relative lg:hidden" ref={menuRef}>
