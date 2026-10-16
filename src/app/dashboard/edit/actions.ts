@@ -89,11 +89,9 @@ export async function saveBusinessProfile(
   const fieldErrors: Record<string, DestinationFieldErrors> = {};
   const seenKeys = new Set<string>();
   const seenIds = new Set<string>();
-  const seenNames = new Set<string>();
 
   for (const destination of destinations) {
     const errors: DestinationFieldErrors = {};
-    const normalizedName = destination.platform.toLocaleLowerCase("en");
 
     if (seenKeys.has(destination.clientKey)) {
       return { error: "Duplicate destination identifiers. Reload the editor and try again.", success: "" };
@@ -109,10 +107,6 @@ export async function saveBusinessProfile(
 
     if (!destination.platform || destination.platform.length > 40) {
       errors.platform = "Enter a destination name (1–40 characters).";
-    } else if (seenNames.has(normalizedName)) {
-      errors.platform = "Use a different destination name for each link, such as Google — Birmingham.";
-    } else {
-      seenNames.add(normalizedName);
     }
 
     if (!destination.url) {
@@ -191,7 +185,7 @@ export async function saveBusinessProfile(
   if (saveError) {
     console.error("Profile save failed:", saveError);
     if (saveError.code === "23505") {
-      return { error: "Destination names must currently be unique. Use a different name for each link.", success: "", submittedPayload: rawPayload };
+      return { error: "A database uniqueness rule prevented this save. Reload and try again.", success: "", submittedPayload: rawPayload };
     }
     if (saveError.code === "23514") {
       return {

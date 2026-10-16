@@ -42,27 +42,13 @@ function initialRows(destinations: SavedDestination[]): EditableDestination[] {
   }));
 }
 
-function validateRow(
-  row: EditableDestination,
-  rows: EditableDestination[],
-): DestinationFieldErrors {
+function validateRow(row: EditableDestination): DestinationFieldErrors {
   const errors: DestinationFieldErrors = {};
   const name = row.platform.trim();
   const url = row.url.trim();
 
   if (!name || name.length > 40) {
     errors.platform = "Enter a destination name (1–40 characters).";
-  } else if (
-    rows.some(
-      (other) =>
-        other.clientKey !== row.clientKey &&
-        other.platform.trim().toLocaleLowerCase("en") ===
-          name.toLocaleLowerCase("en"),
-    )
-  ) {
-    // The original unique-platform index remains until the next cutover.
-    errors.platform =
-      "Use a different name for each destination, such as Google — Birmingham.";
   }
 
   if (!url) {
@@ -182,7 +168,7 @@ export default function ProfileEditor({
     row: EditableDestination,
     field: InputName,
   ): string | undefined {
-    const localErrors = validateRow(row, rows);
+    const localErrors = validateRow(row);
     const shouldShow = attemptedSave || touched[`${row.clientKey}-${field}`];
     const localError = shouldShow ? localErrors[field] : undefined;
     // Ignore returned validation errors when the form has since been edited.
@@ -278,7 +264,7 @@ export default function ProfileEditor({
   }
 
   // Arrow buttons work with mouse, touch, keyboard and assistive technology.
-  // The order of this array is the order the existing v2 RPC saves to display_order.
+  // The order of this array is the order the v3 RPC saves to display_order.
   function moveDestination(clientKey: string, direction: -1 | 1) {
     if (pending || confirmationKey || requiresReload) return;
     markUnsaved();
@@ -368,12 +354,12 @@ export default function ProfileEditor({
     setResponse({ error: "", success: "" });
 
     const invalidRow = rows.find((row) => {
-      const validation = validateRow(row, rows);
+      const validation = validateRow(row);
       return Boolean(validation.platform || validation.url);
     });
 
     if (invalidRow) {
-      const invalidField: InputName = validateRow(invalidRow, rows).platform
+      const invalidField: InputName = validateRow(invalidRow).platform
         ? "platform"
         : "url";
       setResponse({
@@ -818,8 +804,9 @@ export default function ProfileEditor({
               + Add Review Destination
             </button>
             <p className="mt-2 text-xs text-slate-600">
-              {rows.length} of {MAX_DESTINATIONS} destinations. Each name must
-              currently be distinct.
+              {rows.length} of {MAX_DESTINATIONS} destinations. Repeated
+              platform names are allowed. For multiple listings, use descriptive
+              names such as Google — Birmingham.
             </p>
           </section>
 
