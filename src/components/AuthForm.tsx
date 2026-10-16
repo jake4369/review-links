@@ -8,12 +8,13 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type AuthMode = "login" | "signup";
+type AuthFeedback = { kind: "error" | "success"; text: string } | null;
 
 export default function AuthForm() {
   const router = useRouter();
 
   const [mode, setMode] = useState<AuthMode>("login");
-  const [message, setMessage] = useState("");
+  const [feedback, setFeedback] = useState<AuthFeedback>(null);
   const [loading, setLoading] = useState(false);
   const [isNavigating, startNavigation] = useTransition();
 
@@ -34,7 +35,7 @@ export default function AuthForm() {
 
     if (isBusy) return;
 
-    setMessage("");
+    setFeedback(null);
     setLoading(true);
 
     const formData = new FormData(event.currentTarget);
@@ -58,7 +59,7 @@ export default function AuthForm() {
         });
 
         if (error) {
-          setMessage(error.message);
+          setFeedback({ kind: "error", text: error.message });
           return;
         }
 
@@ -68,11 +69,13 @@ export default function AuthForm() {
           return;
         }
 
-        setMessage(
-          "Account created! Please check your email and " +
+        setFeedback({
+          kind: "success",
+          text:
+            "Account created! Please check your email and " +
             "click the confirmation link. Once verified, " +
             "return here and sign in.",
-        );
+        });
 
         return;
       }
@@ -83,13 +86,16 @@ export default function AuthForm() {
       });
 
       if (error) {
-        setMessage(error.message);
+        setFeedback({ kind: "error", text: error.message });
         return;
       }
 
       goToDashboard();
     } catch {
-      setMessage("Something went wrong. Please try again.");
+      setFeedback({
+        kind: "error",
+        text: "Something went wrong. Please try again.",
+      });
     } finally {
       // isNavigating remains true through Next.js route navigation.
       setLoading(false);
@@ -99,7 +105,13 @@ export default function AuthForm() {
   function switchMode() {
     if (isBusy) return;
     setMode(isSignup ? "login" : "signup");
-    setMessage("");
+    setFeedback(null);
+  }
+
+  // General credential errors do not identify which input was wrong.
+  // Keep both fields neutral instead of incorrectly marking one as invalid.
+  function clearErrorOnEdit() {
+    setFeedback((current) => (current?.kind === "error" ? null : current));
   }
 
   const inputClass =
@@ -141,6 +153,7 @@ export default function AuthForm() {
                 autoComplete="email"
                 placeholder="you@business.co.uk"
                 required
+                onChange={clearErrorOnEdit}
                 className={inputClass}
               />
             </div>
@@ -157,6 +170,7 @@ export default function AuthForm() {
                 autoComplete={isSignup ? "new-password" : "current-password"}
                 minLength={8}
                 required
+                onChange={clearErrorOnEdit}
                 className={inputClass}
               />
 
@@ -196,14 +210,22 @@ export default function AuthForm() {
             </p>
           </form>
 
-          {message && (
-            <p
-              role="status"
-              aria-live="polite"
-              className="mt-5 rounded-xl bg-slate-100 p-4 text-sm text-slate-700"
+          {feedback && (
+            <div
+              role={feedback.kind === "error" ? "alert" : "status"}
+              aria-atomic="true"
+              className={
+                "mt-5 flex items-start gap-3 rounded-xl border p-4 text-sm " +
+                (feedback.kind === "error"
+                  ? "border-red-200 bg-red-50 text-red-800"
+                  : "border-emerald-200 bg-emerald-50 text-emerald-800")
+              }
             >
-              {message}
-            </p>
+              <span aria-hidden="true" className="shrink-0 font-bold">
+                {feedback.kind === "error" ? "!" : "✓"}
+              </span>
+              <p>{feedback.text}</p>
+            </div>
           )}
 
           <div className="mt-8 border-t border-slate-200 pt-6 text-center">
