@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import type { SubmitEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -15,13 +15,24 @@ export default function AuthForm() {
   const [mode, setMode] = useState<AuthMode>("login");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isNavigating, startNavigation] = useTransition();
 
   const isSignup = mode === "signup";
+  const isBusy = loading || isNavigating;
+
+  function goToDashboard() {
+    // Keep the button busy until the dashboard navigation completes,
+    // not just until Supabase has accepted the credentials.
+    startNavigation(() => {
+      router.replace("/dashboard");
+      router.refresh();
+    });
+  }
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (loading) return;
+    if (isBusy) return;
 
     setMessage("");
     setLoading(true);
@@ -51,11 +62,9 @@ export default function AuthForm() {
           return;
         }
 
-        // Some Supabase projects may not require
-        // email confirmation.
+        // Some Supabase projects may not require email confirmation.
         if (data.session) {
-          router.replace("/dashboard");
-          router.refresh();
+          goToDashboard();
           return;
         }
 
@@ -68,7 +77,6 @@ export default function AuthForm() {
         return;
       }
 
-      // Existing user login.
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -79,16 +87,17 @@ export default function AuthForm() {
         return;
       }
 
-      router.replace("/dashboard");
-      router.refresh();
+      goToDashboard();
     } catch {
       setMessage("Something went wrong. Please try again.");
     } finally {
+      // isNavigating remains true through Next.js route navigation.
       setLoading(false);
     }
   }
 
   function switchMode() {
+    if (isBusy) return;
     setMode(isSignup ? "login" : "signup");
     setMessage("");
   }
@@ -101,7 +110,6 @@ export default function AuthForm() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12 text-slate-900">
       <div className="w-full max-w-md">
-        {/* Branding */}
         <div className="mb-8 text-center">
           <Link href="/" className="text-2xl font-bold tracking-tight">
             Review
@@ -120,7 +128,7 @@ export default function AuthForm() {
               : "Sign in to manage your review page."}
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+          <form onSubmit={handleSubmit} className="mt-8 space-y-5" aria-busy={isBusy}>
             <div>
               <label htmlFor="email" className="text-sm font-medium">
                 Email address
@@ -161,15 +169,31 @@ export default function AuthForm() {
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isBusy}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-wait disabled:opacity-70"
             >
-              {loading
-                ? "Please wait..."
+              {isBusy && (
+                <span
+                  aria-hidden="true"
+                  className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white motion-reduce:animate-none"
+                />
+              )}
+              {isBusy
+                ? isSignup
+                  ? "Creating account..."
+                  : "Signing in..."
                 : isSignup
                   ? "Create Account"
                   : "Sign In"}
             </button>
+
+            <p role="status" aria-live="polite" className="sr-only">
+              {isBusy
+                ? isSignup
+                  ? "Creating your account, please wait."
+                  : "Signing you in, please wait."
+                : ""}
+            </p>
           </form>
 
           {message && (
@@ -189,8 +213,9 @@ export default function AuthForm() {
 
             <button
               type="button"
+              disabled={isBusy}
               onClick={switchMode}
-              className="mt-2 text-sm font-semibold text-blue-600 hover:underline"
+              className="mt-2 text-sm font-semibold text-blue-600 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSignup ? "Sign In" : "Create an Account"}
             </button>

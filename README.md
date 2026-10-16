@@ -1,31 +1,47 @@
-# ReviewBranch — Desktop Navigation Alignment
+# ReviewBranch — Authentication loading UX (Phase 4)
 
-This replaces **only** `src/components/SiteHeader.tsx` from the previously installed shared sticky header package.
+This patch contains one file: `src/components/AuthForm.tsx`.
 
-## What changes
+## Why this change?
 
-- On desktop (>= 1024px), the brand stays on the left, site links remain truly centred, and account controls are right-aligned.
-- When signed out: the right-side control is **Log in**.
-- When signed in: the right-side controls are **Dashboard** and **Log out**.
-- During session checking, the loading placeholder sits on the right.
-- The sticky header, mobile/tablet hamburger menu, authentication, page routing, and header-free public review pages are unchanged.
+The previous version cleared `loading` in the `finally` block immediately after calling `router.replace("/dashboard")`. Since Next.js navigation can continue after that call, the Sign In button looked idle while the next page was loading.
 
-## Install
+This version keeps a visible loading state through the Supabase request **and** the Next.js navigation via `useTransition`:
 
-In the repository root, after creating a Git checkpoint:
+- Disabled button during submission/navigation, plus animated spinner.
+- **Signing in...** or **Creating account...** text.
+- Accessible live status for screen readers.
+- Keeps the existing `emailRedirectTo` production fix.
+- Re-enables the form after an auth error, or when signup requires email confirmation.
+- Prevents switching between login/signup mid-request.
+
+## Apply
+
+From the project root on your Mac:
 
 ```bash
-unzip -o ~/Downloads/reviewbranch-desktop-nav-alignment.zip -d .
-```
+cd ~/Documents/review-links-app
 
-Then run:
+git status --short
+git add .
+git commit -m "Checkpoint before login loading UX"
 
-```bash
+unzip -o ~/Downloads/reviewbranch-auth-loading-ux.zip -d .
+
 npm run lint
 npx tsc --noEmit
 npm run build
+npm run dev
 ```
 
-Check at desktop widths 1024 and 1440px in signed-in/out states, and at 320px and 375px for mobile regression. Verify that `How it works` is centred relative to the page content container, and the account buttons align with the hamburger's right edge.
+The zip will overwrite `src/components/AuthForm.tsx`. Confirm that your current file still resembles the previously shared version (email/password form and Supabase `emailRedirectTo`) before replacing it. If you have newer changes, back up/merge rather than overwriting them.
 
-This package has passed file-level TSX transpilation checks; it has **not** been built against your actual macOS project.
+## Test
+
+1. Submit valid credentials on localhost. Button shows spinner and **Signing in...**, is disabled until dashboard appears.
+2. Submit incorrect credentials. Button becomes enabled again and error displays.
+3. On signup, button shows **Creating account...**, then the confirmation message or navigation.
+4. Test keyboard activation and screen-reader status.
+5. Once local tests pass, commit and push to GitHub to deploy to Vercel; repeat on `https://reviewbranch.com/login`.
+
+Do not change Supabase settings for this UX update.
