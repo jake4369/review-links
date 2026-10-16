@@ -1,39 +1,63 @@
-# ReviewBranch — homepage login / dashboard navigation
+# ReviewBranch — responsive homepage navigation
 
-A minimal navigation enhancement for the existing **Next.js 16 App Router + Supabase Auth** application. It keeps the marketing homepage static and puts authentication checks in a small client component. No new packages, migrations or environment variables are required.
+This is a targeted navigation update for the existing **Next.js 16 App Router + Supabase Auth** application. It does not replace the homepage's hero, examples or footer and requires no database migration or new npm dependency.
 
-## Before installation
+## Intended navigation
 
-Create a clean Git checkpoint. The installer will **not** overwrite the homepage with an archived version; it only adds a component into its existing `<header>`. It deliberately stops if it cannot identify an unambiguous header, or if the header already contains other navigation.
+| Screen | Signed out | Signed in |
+|---|---|---|
+| Desktop (md+) | Logo left; **How it works** centred; **Log in** on right | Logo left; site links centred; hamburger/account menu on right with site links, **Dashboard**, **Log out** |
+| Mobile | Logo left; visible **Log in** and hamburger right; public site links inside menu | Logo left; hamburger right; public site links plus **Dashboard** and **Log out** inside menu |
 
-## Install
+For future public navigation, add items to `SITE_LINKS` in `src/components/HomeSiteHeader.tsx` only when the corresponding page or section exists. The single list supplies the desktop and dropdown links automatically.
 
-From `~/Documents/review-links-app`:
+The menu provides keyboard Tab navigation, closes with Escape or outside click, focuses the first menu link when opened, and returns focus to its trigger on Escape. Successful logout clears the session and refreshes the route; failures show an error message. Authentication controls are for navigation only; RLS/server checks continue to protect data.
 
-```sh
-unzip -o ~/Downloads/reviewbranch-home-navigation.zip -d .
-node scripts/install-home-nav.mjs            # dry run
-node scripts/install-home-nav.mjs --apply    # apply only if the dry run is sensible
+## Install — **run from the local project root**
+
+First save a Git checkpoint:
+
+```bash
+cd ~/Documents/review-links-app
+git add .
+git commit -m "Checkpoint before responsive homepage navigation"
+```
+
+Extract the ZIP in the project, adding the `HomeSiteHeader.tsx` component and the installer:
+
+```bash
+unzip -o ~/Downloads/reviewbranch-responsive-navigation.zip -d .
+```
+
+Review the proposed change, then apply it:
+
+```bash
+node scripts/install-responsive-nav.mjs
+node scripts/install-responsive-nav.mjs --apply
+```
+
+The installer looks for the **existing** ReviewBranch header containing `HomeAuthNav`, the logo and **How it works**. If its structure differs, it stops without changing the homepage. Do not overwrite your homepage with an old copy; share the current header JSX for a tailored fix if the installer stops. The installer can be rerun safely.
+
+Run quality checks:
+
+```bash
 npm run lint
 npx tsc --noEmit
 npm run build
+npm run dev
 ```
 
-If the installer refuses to edit because there is no single `<header>` or there is existing navigation, no homepage changes are made. Open `src/app/page.tsx`, import `HomeAuthNav` and place `<HomeAuthNav />` as a sibling to the brand mark inside your existing header. Do **not** nest it inside a linked logo. If you're unsure, share your homepage component so it can be integrated precisely.
+Your previous `HomeAuthNav.tsx` file is left untouched but no longer imported by the homepage. It can be removed later once everything is verified. The application directory and internal review links are unchanged.
 
-## Test
+## Checklist before deployment
 
-1. Signed out: visit `/` and confirm **Log in** links to `/login`.
-2. Signed in: visit `/` and confirm **Dashboard** and **Log out** appear.
-3. Click Dashboard: goes to `/dashboard` with the correct account.
-4. Click Log out: account navigation changes back to Log in; `/dashboard` should now redirect to `/login`.
-5. Open `/` in a private window, on phone widths, and with keyboard Tab/Enter/Space.
-6. Confirm no unexpected layout shift, console errors or Supabase authentication regression.
+1. Desktop while signed out: **How it works** is centred, **Log in** is right-aligned and no hamburger is visible.
+2. Mobile width **320px**, **375px**, **390px**: visible **Log in** plus hamburger; no horizontal scrolling; opening menu shows site links.
+3. Desktop and mobile while signed in: **Log in** disappears; hamburger contains **How it works**, **Dashboard**, **Log out**.
+4. Click **Dashboard** and verify the correct business dashboard opens.
+5. Click **Log out**; the UI changes to **Log in** and `/dashboard` is protected.
+6. Open the menu with the keyboard; check Tab, Enter/Space, Escape and outside-click dismissal.
+7. Click **How it works** from the menu and confirm it scrolls to that section.
+8. Confirm the homepage hero and public review page are unchanged, and no browser or server errors appear.
 
-## How it works
-
-`src/components/HomeAuthNav.tsx` uses the same `@/lib/supabase/client` factory as your other client-side Supabase code, listens for auth changes (including other tabs), and asks Supabase for the signed-in user on mount. The auth state is **display-only**: the dashboard still enforces login on the server, and database RLS remains authoritative. Log out invokes `supabase.auth.signOut()` and refreshes the current route.
-
-If your existing dashboard uses a custom centralized sign-out action, this independent homepage sign-out can be adapted to call it instead. Both paths use the same underlying Supabase session semantics; no server-side security protections have been changed.
-
-This patch does not alter the domain configuration, brand metadata, database schema, or business links.
+The TSX syntax and installer were tested with representative inputs. Because this package does not contain your whole local source tree, the full Next.js build and runtime auth tests must be run on your Mac.

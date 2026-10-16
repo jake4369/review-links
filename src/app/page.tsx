@@ -1,4 +1,4 @@
-import HomeAuthNav from "@/components/HomeAuthNav";
+import HomeSiteHeader from "@/components/HomeSiteHeader";
 const steps = [
   {
     number: "01",
@@ -23,19 +23,7 @@ export default function Home() {
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto max-w-6xl px-6">
         {/* NAVIGATION */}
-        <header className="flex items-centre justify-between py-6">
-          <span className="text-xl font-bold tracking-tight">
-            Review<span className="text-blue-600">Branch</span>
-          </span>
-
-          <a
-            href="#how-it-works"
-            className="text-sm font-medium text-slate-600 hover:text-blue-600"
-          >
-            How it works
-          </a>
-          <HomeAuthNav />
-        </header>
+        <HomeSiteHeader />
 
         {/* HERO */}
         <section className="grid items-centre gap-12 py-20 md:grid-cols-2 md:py-28">
