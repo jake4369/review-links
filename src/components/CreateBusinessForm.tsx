@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { createBusiness } from "@/app/dashboard/create/actions";
+import { createBusiness } from "@/app/(site)/dashboard/create/actions";
 
 const initialState = {
   error: "",

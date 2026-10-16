@@ -1,63 +1,57 @@
-# ReviewBranch — responsive homepage navigation
+# ReviewBranch — Shared sticky navigation (Phase 4.1 refinement)
 
-This is a targeted navigation update for the existing **Next.js 16 App Router + Supabase Auth** application. It does not replace the homepage's hero, examples or footer and requires no database migration or new npm dependency.
+## Design
+- Desktop (`lg` and above): logo left; "How it works", "Log in" (or "Dashboard" and "Log out") as directly visible, centre-aligned links. No hamburger.
+- Phone/tablet: logo left, hamburger right. All links and authentication actions inside the dropdown. No logo/login collision at 320px.
+- Sticky, full-width header on homepage and dashboard, with subtle border and backdrop.
+- **No header on `/r/[slug]`** because public review pages remain outside the `(site)` route group.
+- Includes Escape, outside click, focus states, focus return and session updates.
 
-## Intended navigation
+## Installation — one reviewed step at a time
 
-| Screen | Signed out | Signed in |
-|---|---|---|
-| Desktop (md+) | Logo left; **How it works** centred; **Log in** on right | Logo left; site links centred; hamburger/account menu on right with site links, **Dashboard**, **Log out** |
-| Mobile | Logo left; visible **Log in** and hamburger right; public site links inside menu | Logo left; hamburger right; public site links plus **Dashboard** and **Log out** inside menu |
+1. Save a Git checkpoint **before** installing:
 
-For future public navigation, add items to `SITE_LINKS` in `src/components/HomeSiteHeader.tsx` only when the corresponding page or section exists. The single list supplies the desktop and dropdown links automatically.
+   ```bash
+   cd ~/Documents/review-links-app
+   git add .
+   git commit -m "Checkpoint before shared sticky navigation"
+   ```
 
-The menu provides keyboard Tab navigation, closes with Escape or outside click, focuses the first menu link when opened, and returns focus to its trigger on Escape. Successful logout clears the session and refreshes the route; failures show an error message. Authentication controls are for navigation only; RLS/server checks continue to protect data.
+2. Extract the ZIP to your project root:
 
-## Install — **run from the local project root**
+   ```bash
+   unzip -o ~/Downloads/reviewbranch-shared-sticky-header.zip -d .
+   ```
 
-First save a Git checkpoint:
+3. Run the **dry run** first:
 
-```bash
-cd ~/Documents/review-links-app
-git add .
-git commit -m "Checkpoint before responsive homepage navigation"
-```
+   ```bash
+   node scripts/install-shared-site-layout.mjs
+   ```
 
-Extract the ZIP in the project, adding the `HomeSiteHeader.tsx` component and the installer:
+   It must say `PRECHECK PASSED`. If it stops, **do not** manually move files. Share the error and `src/app/dashboard/layout.tsx` to create a tailored installation.
 
-```bash
-unzip -o ~/Downloads/reviewbranch-responsive-navigation.zip -d .
-```
+4. Apply:
 
-Review the proposed change, then apply it:
+   ```bash
+   node scripts/install-shared-site-layout.mjs --apply
+   ```
 
-```bash
-node scripts/install-responsive-nav.mjs
-node scripts/install-responsive-nav.mjs --apply
-```
+5. Verify:
 
-The installer looks for the **existing** ReviewBranch header containing `HomeAuthNav`, the logo and **How it works**. If its structure differs, it stops without changing the homepage. Do not overwrite your homepage with an old copy; share the current header JSX for a tailored fix if the installer stops. The installer can be rerun safely.
+   ```bash
+   npm run lint
+   npx tsc --noEmit
+   npm run build
+   npm run dev
+   ```
 
-Run quality checks:
+6. Test at 320, 375, 390, 768 and 1024px: desktop/mobile; signed in/out; menu keyboard; sticky scroll; dashboard session; no site navigation on `/r/testbus`; no duplicate headers. Confirm `/dashboard/edit` still saves properly.
 
-```bash
-npm run lint
-npx tsc --noEmit
-npm run build
-npm run dev
-```
-
-Your previous `HomeAuthNav.tsx` file is left untouched but no longer imported by the homepage. It can be removed later once everything is verified. The application directory and internal review links are unchanged.
-
-## Checklist before deployment
-
-1. Desktop while signed out: **How it works** is centred, **Log in** is right-aligned and no hamburger is visible.
-2. Mobile width **320px**, **375px**, **390px**: visible **Log in** plus hamburger; no horizontal scrolling; opening menu shows site links.
-3. Desktop and mobile while signed in: **Log in** disappears; hamburger contains **How it works**, **Dashboard**, **Log out**.
-4. Click **Dashboard** and verify the correct business dashboard opens.
-5. Click **Log out**; the UI changes to **Log in** and `/dashboard` is protected.
-6. Open the menu with the keyboard; check Tab, Enter/Space, Escape and outside-click dismissal.
-7. Click **How it works** from the menu and confirm it scrolls to that section.
-8. Confirm the homepage hero and public review page are unchanged, and no browser or server errors appear.
-
-The TSX syntax and installer were tested with representative inputs. Because this package does not contain your whole local source tree, the full Next.js build and runtime auth tests must be run on your Mac.
+## Notes
+- Route groups do **not** appear in URLs. `/dashboard` and `/r/testbus` stay exactly the same.
+- The root layout `src/app/layout.tsx`, Supabase Auth, redirects, database, public profile, and links are unchanged.
+- Existing `src/components/HomeSiteHeader.tsx` and `src/components/HomeAuthNav.tsx` remain in the project for now but are no longer rendered; remove obsolete components after the new layout passes tests.
+- The dashboard's auth guard and content wrappers are preserved. The installer removes only its old branded `<header>` block.
+- The installer is intentionally conservative. It will not alter an unexpected dashboard layout.
+- If lint flags an import or declaration that was only used by the removed dashboard header, share the exact error and the dashboard layout; the change is small and we should fix it rather than rewriting the entire layout blindly.

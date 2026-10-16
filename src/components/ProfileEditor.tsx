@@ -7,7 +7,7 @@ import {
   saveBusinessProfile,
   type DestinationFieldErrors,
   type SaveProfileState,
-} from "@/app/dashboard/edit/actions";
+} from "@/app/(site)/dashboard/edit/actions";
 import { reviewDestinationError } from "@/lib/review-destination-validation";
 import { useReviewPageUrl } from "@/hooks/useReviewProfile";
 

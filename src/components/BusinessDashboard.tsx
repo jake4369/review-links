@@ -7,7 +7,7 @@ import type { Business } from "@/lib/businesses";
 import {
   changePublication,
   type PublicationState,
-} from "@/app/dashboard/actions";
+} from "@/app/(site)/dashboard/actions";
 import { useReviewPageUrl } from "@/hooks/useReviewProfile";
 
 type BusinessDashboardProps = {

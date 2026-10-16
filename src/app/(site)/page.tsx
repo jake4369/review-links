@@ -1,4 +1,3 @@
-import HomeSiteHeader from "@/components/HomeSiteHeader";
 const steps = [
   {
     number: "01",
@@ -23,7 +22,7 @@ export default function Home() {
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto max-w-6xl px-6">
         {/* NAVIGATION */}
-        <HomeSiteHeader />
+        
 
         {/* HERO */}
         <section className="grid items-centre gap-12 py-20 md:grid-cols-2 md:py-28">
