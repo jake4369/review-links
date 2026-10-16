@@ -1,3 +1,4 @@
+import HomeAuthNav from "@/components/HomeAuthNav";
 const steps = [
   {
     number: "01",
@@ -33,6 +34,7 @@ export default function Home() {
           >
             How it works
           </a>
+          <HomeAuthNav />
         </header>
 
         {/* HERO */}

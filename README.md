@@ -1,26 +1,39 @@
-# ReviewBranch
+# ReviewBranch — homepage login / dashboard navigation
 
-ReviewBranch is a lightweight review-sharing SaaS. Businesses manage a public review page, customise review destinations, and share a permanent link or QR code with customers.
+A minimal navigation enhancement for the existing **Next.js 16 App Router + Supabase Auth** application. It keeps the marketing homepage static and puts authentication checks in a small client component. No new packages, migrations or environment variables are required.
 
-## Local development
+## Before installation
 
-The application uses Next.js (App Router), TypeScript, Tailwind CSS and Supabase.
+Create a clean Git checkpoint. The installer will **not** overwrite the homepage with an archived version; it only adds a component into its existing `<header>`. It deliberately stops if it cannot identify an unambiguous header, or if the header already contains other navigation.
 
-1. Install dependencies with `npm install`.
-2. Configure the existing required Supabase environment variables in `.env.local` (do not commit secrets).
-3. Run `npm run dev`, then open `http://localhost:3000`.
+## Install
 
-## Checks
+From `~/Documents/review-links-app`:
 
-Run `npm run lint`, `npx tsc --noEmit`, and `npm run build` before deployment.
+```sh
+unzip -o ~/Downloads/reviewbranch-home-navigation.zip -d .
+node scripts/install-home-nav.mjs            # dry run
+node scripts/install-home-nav.mjs --apply    # apply only if the dry run is sensible
+npm run lint
+npx tsc --noEmit
+npm run build
+```
 
-## Domains
+If the installer refuses to edit because there is no single `<header>` or there is existing navigation, no homepage changes are made. Open `src/app/page.tsx`, import `HomeAuthNav` and place `<HomeAuthNav />` as a sibling to the brand mark inside your existing header. Do **not** nest it inside a linked logo. If you're unsure, share your homepage component so it can be integrated precisely.
 
-- Canonical production domain: **https://reviewbranch.com**
-- Secondary domain: **https://reviewbranch.co.uk** (permanent redirect to the matching path on the canonical domain, configured at the hosting provider)
+## Test
 
-The local project directory can retain its current name. Existing business slugs and database identifiers remain unchanged.
+1. Signed out: visit `/` and confirm **Log in** links to `/login`.
+2. Signed in: visit `/` and confirm **Dashboard** and **Log out** appear.
+3. Click Dashboard: goes to `/dashboard` with the correct account.
+4. Click Log out: account navigation changes back to Log in; `/dashboard` should now redirect to `/login`.
+5. Open `/` in a private window, on phone widths, and with keyboard Tab/Enter/Space.
+6. Confirm no unexpected layout shift, console errors or Supabase authentication regression.
 
-## Deployment
+## How it works
 
-The domains and authentication URLs must be configured at the hosting provider and in Supabase before production launch. Do not use real business QR codes until the canonical live URL and redirects have been tested.
+`src/components/HomeAuthNav.tsx` uses the same `@/lib/supabase/client` factory as your other client-side Supabase code, listens for auth changes (including other tabs), and asks Supabase for the signed-in user on mount. The auth state is **display-only**: the dashboard still enforces login on the server, and database RLS remains authoritative. Log out invokes `supabase.auth.signOut()` and refreshes the current route.
+
+If your existing dashboard uses a custom centralized sign-out action, this independent homepage sign-out can be adapted to call it instead. Both paths use the same underlying Supabase session semantics; no server-side security protections have been changed.
+
+This patch does not alter the domain configuration, brand metadata, database schema, or business links.
