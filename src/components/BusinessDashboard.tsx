@@ -34,6 +34,7 @@ export default function BusinessDashboard({
   const shareUrl = useReviewPageUrl(business.slug);
 
   const [copyStatus, setCopyStatus] = useState("");
+  const [shareStatus, setShareStatus] = useState("");
 
   const qrRef = useRef<HTMLCanvasElement>(null);
   const qrDialogRef = useRef<HTMLDialogElement>(null);
@@ -57,6 +58,44 @@ export default function BusinessDashboard({
   const emailUrl = `mailto:?subject=${encodeURIComponent(
     `Review your experience with ${business.name}`,
   )}&body=${encodeURIComponent(message)}`;
+
+  async function shareProfile() {
+    if (!isPublished || !shareUrl) return;
+
+    setShareStatus("");
+
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({
+          title: `Review ${business.name}`,
+          text:
+            business.invitationMessage.trim() ||
+            `We'd love your feedback about ${business.name}.`,
+          url: shareUrl,
+        });
+
+        return;
+      } catch (error) {
+        // Cancelling the share menu is not an error.
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+      }
+    }
+
+    // Fallback for browsers without a usable share menu.
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+
+      setShareStatus(
+        "Sharing menu unavailable. Your review link has been copied — paste it into your preferred app.",
+      );
+    } catch {
+      setShareStatus(
+        "Sharing is unavailable in this browser. Select and copy your review link above.",
+      );
+    }
+  }
 
   async function copyLink() {
     if (!shareUrl || !isPublished) return;
@@ -377,7 +416,25 @@ export default function BusinessDashboard({
                 Choose how you&apos;d like to send your review link.
               </p>
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <button
+                type="button"
+                onClick={shareProfile}
+                disabled={!shareUrl}
+                className="mt-5 w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Share Anywhere
+              </button>
+
+              {shareStatus && (
+                <p
+                  role="status"
+                  className="mt-2 text-sm leading-6 text-slate-600"
+                >
+                  {shareStatus}
+                </p>
+              )}
+
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
                 <a
                   href={whatsappUrl}
                   target="_blank"
