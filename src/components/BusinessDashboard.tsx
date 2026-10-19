@@ -34,6 +34,7 @@ export default function BusinessDashboard({
   const shareUrl = useReviewPageUrl(business.slug);
   const [copyStatus, setCopyStatus] = useState("");
   const qrRef = useRef<HTMLCanvasElement>(null);
+  const qrDialogRef = useRef<HTMLDialogElement>(null);
   const [publicationState, publicationAction, pending] = useActionState(
     changePublication,
     initialPublicationState,
@@ -223,14 +224,73 @@ export default function BusinessDashboard({
                 <p className="text-sm text-slate-400">Preparing QR code...</p>
               )}
             </div>
+
+            <button
+              type="button"
+              disabled={!shareUrl}
+              onClick={() => qrDialogRef.current?.showModal()}
+              className="mt-6 w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Show QR Code Full Screen
+            </button>
+
             <button
               type="button"
               disabled={!shareUrl}
               onClick={downloadQRCode}
-              className="mt-6 w-full rounded-xl border border-slate-200 px-5 py-3 font-semibold transition hover:bg-slate-50 disabled:opacity-50"
+              className="mt-3 w-full rounded-xl border border-slate-200 px-5 py-3 font-semibold transition hover:bg-slate-50 disabled:opacity-50"
             >
               Download QR Code
             </button>
+
+            <dialog
+              ref={qrDialogRef}
+              aria-labelledby="customer-qr-title"
+              aria-describedby="customer-qr-description"
+              className="fixed inset-0 m-0 h-[100dvh] max-h-none w-screen max-w-none overflow-y-auto border-0 bg-white p-0 text-slate-900 backdrop:bg-white"
+            >
+              <div className="mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col px-5 py-5 sm:px-8">
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => qrDialogRef.current?.close()}
+                    aria-label="Close QR code display"
+                    className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-xl text-slate-900 transition hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                  >
+                    <span aria-hidden="true">×</span>
+                  </button>
+                </div>
+
+                <div className="flex flex-1 flex-col items-center justify-center py-10 text-center">
+                  <h2
+                    id="customer-qr-title"
+                    className="text-2xl font-bold tracking-tight sm:text-3xl"
+                  >
+                    Leave a review for {business.name}
+                  </h2>
+
+                  <p
+                    id="customer-qr-description"
+                    className="mt-4 max-w-md text-base leading-7 text-slate-600"
+                  >
+                    Scan the QR code with your phone to visit our review page.
+                  </p>
+
+                  {shareUrl && (
+                    <div className="mt-8 w-full max-w-[320px] rounded-2xl bg-white p-2">
+                      <QRCodeCanvas
+                        value={shareUrl}
+                        size={320}
+                        level="M"
+                        marginSize={4}
+                        title={`Review ${business.name}`}
+                        className="h-auto w-full"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </dialog>
           </section>
         )}
 
