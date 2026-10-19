@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import BusinessDashboard from "@/components/BusinessDashboard";
 import { createClient } from "@/lib/supabase/server";
 import type { Business } from "@/lib/businesses";
+import OnboardingChecklist from "@/components/OnboardingChecklist";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -11,14 +12,19 @@ export default async function DashboardPage() {
 
   const { data: record, error: businessError } = await supabase
     .from("businesses")
-    .select("id, name, slug, logo_text, welcome_message, invitation_message, is_published")
+    .select(
+      "id, name, slug, logo_text, welcome_message, invitation_message, is_published, onboarding_completed_at",
+    )
     .eq("owner_id", authData.claims.sub)
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
 
   if (businessError) throw new Error("Unable to load your business.");
-  if (!record) redirect("/dashboard/create");
+
+  if (!record) {
+    return <OnboardingChecklist completedSteps={0} />;
+  }
 
   const { data: links, error: linksError } = await supabase
     .from("review_links")
@@ -47,6 +53,13 @@ export default async function DashboardPage() {
       business={business}
       isPublished={record.is_published}
       canPublish={business.reviewLinks.some((link) => Boolean(link.url))}
+      onboardingSteps={
+        record.onboarding_completed_at !== null || record.is_published
+          ? undefined
+          : business.reviewLinks.some((link) => Boolean(link.url))
+            ? 2
+            : 1
+      }
     />
   );
 }

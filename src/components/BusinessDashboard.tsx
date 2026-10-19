@@ -9,12 +9,14 @@ import {
   type PublicationState,
 } from "@/app/(site)/dashboard/actions";
 import { useReviewPageUrl } from "@/hooks/useReviewProfile";
+import OnboardingChecklist from "@/components/OnboardingChecklist";
 
 type BusinessDashboardProps = {
   businessId: string;
   business: Business;
   isPublished: boolean;
   canPublish: boolean;
+  onboardingSteps?: 1 | 2;
 };
 
 const initialPublicationState: PublicationState = {
@@ -27,6 +29,7 @@ export default function BusinessDashboard({
   business,
   isPublished,
   canPublish,
+  onboardingSteps,
 }: BusinessDashboardProps) {
   const shareUrl = useReviewPageUrl(business.slug);
   const [copyStatus, setCopyStatus] = useState("");
@@ -73,13 +76,22 @@ export default function BusinessDashboard({
     link.remove();
   }
 
+  const DashboardHeading = onboardingSteps !== undefined ? "h2" : "h1";
+
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900">
       <div className="mx-auto w-full max-w-xl">
+        {onboardingSteps !== undefined && (
+          <div className="mb-8">
+            <OnboardingChecklist completedSteps={onboardingSteps} embedded />
+          </div>
+        )}
+
         <header className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">
+          <DashboardHeading className="text-3xl font-bold tracking-tight">
             Your Review Dashboard
-          </h1>
+          </DashboardHeading>
+
           <p className="mt-2 text-slate-600">{business.name}</p>
           <Link
             href="/dashboard/edit"
@@ -90,7 +102,10 @@ export default function BusinessDashboard({
         </header>
 
         {/* Publishing */}
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section
+          id="publish-profile"
+          className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+        >
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">Profile Status</h2>
             <span

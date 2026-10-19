@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { createBusiness } from "@/app/(site)/dashboard/create/actions";
 
 const initialState = {
@@ -8,10 +8,14 @@ const initialState = {
 };
 
 export default function CreateBusinessForm() {
+  const [slug, setSlug] = useState("");
+
   const [state, formAction, pending] = useActionState(
     createBusiness,
     initialState,
   );
+
+  const previewSlug = slug.trim() || "your-business";
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-12 text-slate-900">
@@ -41,6 +45,7 @@ export default function CreateBusinessForm() {
               type="text"
               required
               maxLength={120}
+              autoComplete="organization"
               placeholder="e.g. DevXDesign"
               className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500"
             />
@@ -52,8 +57,17 @@ export default function CreateBusinessForm() {
 
           <div>
             <label htmlFor="slug" className="block text-sm font-semibold">
-              Your review page address
+              Your review page link
             </label>
+
+            <p
+              id="slug-description"
+              className="mt-2 text-sm leading-6 text-slate-600"
+            >
+              Choose a unique link for your business. This is the web link
+              customers will use to leave reviews, not your physical business
+              address.
+            </p>
 
             <input
               id="slug"
@@ -63,22 +77,31 @@ export default function CreateBusinessForm() {
               minLength={3}
               maxLength={60}
               pattern="[a-z0-9]+(-[a-z0-9]+)*"
+              autoCapitalize="none"
+              autoComplete="off"
+              spellCheck={false}
+              value={slug}
+              onChange={(event) => setSlug(event.target.value)}
+              aria-describedby="slug-description slug-rules"
               placeholder="e.g. devxdesign"
-              className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500"
+              className="mt-3 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500"
             />
 
-            <p className="mt-2 text-xs text-slate-500">
-              Your link will look like:
+            <p id="slug-rules" className="mt-2 text-xs text-slate-500">
+              Use 3–60 characters: lowercase letters, numbers and single hyphens
+              between words. Your link must be unique and cannot be changed
+              after creation.
             </p>
 
-            <p className="mt-1 break-all text-sm font-medium text-blue-600">
-              reviewlinks.com/r/your-business
-            </p>
+            <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50 p-4">
+              <p className="text-xs font-semibold text-slate-700">
+                Your review page will be:
+              </p>
 
-            <p className="mt-2 text-xs text-slate-500">
-              Use lowercase letters, numbers and hyphens. This address must be
-              unique.
-            </p>
+              <p className="mt-2 break-all text-sm font-semibold text-blue-700">
+                reviewbranch.com/r/{previewSlug}
+              </p>
+            </div>
           </div>
 
           {state.error && (
