@@ -89,11 +89,26 @@ export default function BusinessDashboard({
         )}
 
         <header className="mb-8">
-          <DashboardHeading className="text-3xl font-bold tracking-tight">
-            Your Review Dashboard
-          </DashboardHeading>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <DashboardHeading className="text-3xl font-bold tracking-tight">
+                Your Review Dashboard
+              </DashboardHeading>
 
-          <p className="mt-2 text-slate-600">{business.name}</p>
+              <p className="mt-2 text-slate-600">{business.name}</p>
+            </div>
+
+            <span
+              className={
+                isPublished
+                  ? "mt-1 shrink-0 rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700"
+                  : "mt-1 shrink-0 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700"
+              }
+            >
+              {isPublished ? "Published" : "Draft"}
+            </span>
+          </div>
+
           <Link
             href="/dashboard/edit"
             className="mt-4 inline-block text-sm font-semibold text-blue-600 hover:underline"
@@ -107,51 +122,80 @@ export default function BusinessDashboard({
           id="publish-profile"
           className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
         >
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold">Profile Status</h2>
-            <span
-              className={
-                isPublished
-                  ? "rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700"
-                  : "rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700"
-              }
-            >
-              {isPublished ? "Published" : "Draft"}
-            </span>
-          </div>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
-            {isPublished
-              ? "Your review page is live and ready to share."
-              : "Your review page is private until you publish it."}
-          </p>
+          {isPublished ? (
+            <details className="group">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 [&::-webkit-details-marker]:hidden">
+                <span className="text-base font-semibold">
+                  Manage review page
+                </span>
 
-          <form action={publicationAction} className="mt-5">
-            <input type="hidden" name="businessId" value={businessId} />
-            <input type="hidden" name="publish" value={String(!isPublished)} />
-            <button
-              type="submit"
-              disabled={pending || (!isPublished && !canPublish)}
-              className="w-full rounded-xl bg-slate-900 px-5 py-3 font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {pending
-                ? "Updating..."
-                : isPublished
-                  ? "Unpublish Profile"
-                  : "Publish Profile"}
-            </button>
-          </form>
+                <span
+                  aria-hidden="true"
+                  className="text-xl text-slate-500 transition-transform group-open:rotate-180"
+                >
+                  ⌄
+                </span>
+              </summary>
 
-          {!isPublished && !canPublish && (
-            <p className="mt-3 text-sm text-amber-700">
-              Add at least one review destination in your profile editor before
-              publishing.
-            </p>
+              <div className="mt-4 border-t border-slate-200 pt-4">
+                <p className="text-sm leading-6 text-slate-600">
+                  Your review page is currently live. Unpublishing will make it
+                  unavailable to customers until you publish it again. Your
+                  business details and review destinations will be saved.
+                </p>
+
+                <form action={publicationAction} className="mt-5">
+                  <input type="hidden" name="businessId" value={businessId} />
+                  <input type="hidden" name="publish" value="false" />
+
+                  <button
+                    type="submit"
+                    disabled={pending}
+                    className="w-full rounded-xl border border-red-200 bg-white px-5 py-3 font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {pending ? "Updating..." : "Unpublish Profile"}
+                  </button>
+                </form>
+              </div>
+            </details>
+          ) : (
+            <>
+              <h2 className="text-lg font-semibold">
+                Publish your review page
+              </h2>
+
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                Your review page is private until you publish it.
+              </p>
+
+              <form action={publicationAction} className="mt-5">
+                <input type="hidden" name="businessId" value={businessId} />
+                <input type="hidden" name="publish" value="true" />
+
+                <button
+                  type="submit"
+                  disabled={pending || !canPublish}
+                  className="w-full rounded-xl bg-slate-900 px-5 py-3 font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {pending ? "Updating..." : "Publish Profile"}
+                </button>
+              </form>
+
+              {!canPublish && (
+                <p className="mt-3 text-sm text-amber-700">
+                  Add at least one review destination in your profile editor
+                  before publishing.
+                </p>
+              )}
+            </>
           )}
+
           {publicationState.error && (
             <p role="alert" className="mt-3 text-sm text-red-600">
               {publicationState.error}
             </p>
           )}
+
           {publicationState.success && (
             <p role="status" className="mt-3 text-sm text-green-700">
               {publicationState.success}
