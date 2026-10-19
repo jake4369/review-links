@@ -87,6 +87,91 @@ export default function BusinessDashboard({
 
   const DashboardHeading = onboardingSteps !== undefined ? "h2" : "h1";
 
+  const publicationSection = (
+    <section
+      id="publish-profile"
+      className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+    >
+      {isPublished ? (
+        <details className="group">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 [&::-webkit-details-marker]:hidden">
+            <span className="text-base font-semibold">Manage review page</span>
+
+            <span
+              aria-hidden="true"
+              className="text-xl text-slate-500 transition-transform group-open:rotate-180"
+            >
+              ⌄
+            </span>
+          </summary>
+
+          <div className="mt-4 border-t border-slate-200 pt-4">
+            <p className="text-sm leading-6 text-slate-600">
+              Your review page is currently live. Unpublishing will make it
+              unavailable to customers until you publish it again. Your business
+              details and review destinations will be saved.
+            </p>
+
+            <form action={publicationAction} className="mt-5">
+              <input type="hidden" name="businessId" value={businessId} />
+
+              <input type="hidden" name="publish" value="false" />
+
+              <button
+                type="submit"
+                disabled={pending}
+                className="w-full rounded-xl border border-red-200 bg-white px-5 py-3 font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {pending ? "Updating..." : "Unpublish Profile"}
+              </button>
+            </form>
+          </div>
+        </details>
+      ) : (
+        <>
+          <h2 className="text-lg font-semibold">Publish your review page</h2>
+
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            Your review page is private until you publish it.
+          </p>
+
+          <form action={publicationAction} className="mt-5">
+            <input type="hidden" name="businessId" value={businessId} />
+
+            <input type="hidden" name="publish" value="true" />
+
+            <button
+              type="submit"
+              disabled={pending || !canPublish}
+              className="w-full rounded-xl bg-slate-900 px-5 py-3 font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {pending ? "Updating..." : "Publish Profile"}
+            </button>
+          </form>
+
+          {!canPublish && (
+            <p className="mt-3 text-sm text-amber-700">
+              Add at least one review destination in your profile editor before
+              publishing.
+            </p>
+          )}
+        </>
+      )}
+
+      {publicationState.error && (
+        <p role="alert" className="mt-3 text-sm text-red-600">
+          {publicationState.error}
+        </p>
+      )}
+
+      {publicationState.success && (
+        <p role="status" className="mt-3 text-sm text-green-700">
+          {publicationState.success}
+        </p>
+      )}
+    </section>
+  );
+
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900">
       <div
@@ -132,92 +217,7 @@ export default function BusinessDashboard({
         </header>
 
         {/* Publishing and management controls */}
-        <section
-          id="publish-profile"
-          className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-        >
-          {isPublished ? (
-            <details className="group">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 [&::-webkit-details-marker]:hidden">
-                <span className="text-base font-semibold">
-                  Manage review page
-                </span>
-
-                <span
-                  aria-hidden="true"
-                  className="text-xl text-slate-500 transition-transform group-open:rotate-180"
-                >
-                  ⌄
-                </span>
-              </summary>
-
-              <div className="mt-4 border-t border-slate-200 pt-4">
-                <p className="text-sm leading-6 text-slate-600">
-                  Your review page is currently live. Unpublishing will make it
-                  unavailable to customers until you publish it again. Your
-                  business details and review destinations will be saved.
-                </p>
-
-                <form action={publicationAction} className="mt-5">
-                  <input type="hidden" name="businessId" value={businessId} />
-
-                  <input type="hidden" name="publish" value="false" />
-
-                  <button
-                    type="submit"
-                    disabled={pending}
-                    className="w-full rounded-xl border border-red-200 bg-white px-5 py-3 font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {pending ? "Updating..." : "Unpublish Profile"}
-                  </button>
-                </form>
-              </div>
-            </details>
-          ) : (
-            <>
-              <h2 className="text-lg font-semibold">
-                Publish your review page
-              </h2>
-
-              <p className="mt-3 text-sm leading-6 text-slate-600">
-                Your review page is private until you publish it.
-              </p>
-
-              <form action={publicationAction} className="mt-5">
-                <input type="hidden" name="businessId" value={businessId} />
-
-                <input type="hidden" name="publish" value="true" />
-
-                <button
-                  type="submit"
-                  disabled={pending || !canPublish}
-                  className="w-full rounded-xl bg-slate-900 px-5 py-3 font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {pending ? "Updating..." : "Publish Profile"}
-                </button>
-              </form>
-
-              {!canPublish && (
-                <p className="mt-3 text-sm text-amber-700">
-                  Add at least one review destination in your profile editor
-                  before publishing.
-                </p>
-              )}
-            </>
-          )}
-
-          {publicationState.error && (
-            <p role="alert" className="mt-3 text-sm text-red-600">
-              {publicationState.error}
-            </p>
-          )}
-
-          {publicationState.success && (
-            <p role="status" className="mt-3 text-sm text-green-700">
-              {publicationState.success}
-            </p>
-          )}
-        </section>
+        {!isPublished && publicationSection}
 
         {/* Responsive sharing dashboard */}
         <div
@@ -404,6 +404,8 @@ export default function BusinessDashboard({
             </section>
           )}
         </div>
+
+        {isPublished && <div className="mt-5">{publicationSection}</div>}
 
         {/* Dashboard footer */}
         <footer className="mt-10 text-center text-xs text-slate-600">
