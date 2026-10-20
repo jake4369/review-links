@@ -81,7 +81,7 @@ export default function CreateBusinessForm() {
               autoComplete="off"
               spellCheck={false}
               value={slug}
-              onChange={(event) => setSlug(event.target.value)}
+              onChange={(event) => setSlug(event.target.value.toLowerCase())}
               aria-describedby="slug-description slug-rules"
               placeholder="e.g. devxdesign"
               className="mt-3 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500"
