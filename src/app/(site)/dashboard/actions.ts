@@ -15,7 +15,7 @@ export async function changePublication(
   const businessId = String(formData.get("businessId") ?? "");
   const requestedValue = formData.get("publish");
 
-  if (!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(businessId)) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(businessId)) {
     return { error: "Invalid business identifier.", success: "" };
   }
 
