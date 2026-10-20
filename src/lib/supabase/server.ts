@@ -20,8 +20,7 @@ export async function createClient() {
             });
           } catch {
             // Server Components cannot set cookies.
-            // Session refresh handling will be added
-            // when we implement authentication.
+            // Protected dashboard requests refresh the session in the proxy.
           }
         },
       },
