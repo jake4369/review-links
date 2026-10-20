@@ -630,7 +630,7 @@ export default function ProfileEditor({
                   : "Select Save Changes to apply these updates."}
               </p>
             )}
-            <datalist id="reviewlinks-platform-suggestions">
+            <datalist id="reviewbranch-platform-suggestions">
               {[
                 "Google",
                 "Trustpilot",
@@ -779,7 +779,7 @@ export default function ProfileEditor({
                       <input
                         id={`${row.clientKey}-platform`}
                         type="text"
-                        list="reviewlinks-platform-suggestions"
+                        list="reviewbranch-platform-suggestions"
                         maxLength={40}
                         value={row.platform}
                         disabled={pending || requiresReload}
