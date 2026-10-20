@@ -25,7 +25,7 @@ export default function Home() {
         
 
         {/* HERO */}
-        <section className="grid items-centre gap-12 py-20 md:grid-cols-2 md:py-28">
+        <section className="grid items-center gap-12 py-20 md:grid-cols-2 md:py-28">
           <div>
             <p className="mb-5 text-sm font-semibold text-blue-600">
               SIMPLE REVIEW SHARING
@@ -54,7 +54,7 @@ export default function Home() {
               EXAMPLE REVIEW PAGE
             </p>
 
-            <div className="mx-auto flex max-w-sm flex-col items-centre text-center">
+            <div className="mx-auto flex max-w-sm flex-col items-center text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100 text-xl font-bold text-blue-700">
                 DevX
               </div>
@@ -88,7 +88,7 @@ export default function Home() {
 
         {/* HOW IT WORKS */}
         <section id="how-it-works" className="border-t border-slate-200 py-20">
-          <div className="mb-12 text-centre">
+          <div className="mb-12 text-center">
             <h2 className="text-3xl font-bold tracking-tight">How it works</h2>
             <p className="mt-3 text-slate-600">
               Three simple steps. That&apos;s all there is to it.
@@ -115,7 +115,7 @@ export default function Home() {
           </div>
         </section>
 
-        <footer className="border-t border-slate-200 py-8 text-centre text-sm text-slate-500">
+        <footer className="border-t border-slate-200 py-8 text-center text-sm text-slate-500">
           ReviewBranch - Making reviews easier.
         </footer>
       </div>
