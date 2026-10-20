@@ -125,7 +125,7 @@ export default function AuthForm() {
         <div className="mb-8 text-center">
           <Link href="/" className="text-2xl font-bold tracking-tight">
             Review
-            <span className="text-blue-600">Branch</span>
+            <span className="text-blue-700">Branch</span>
           </Link>
         </div>
 
@@ -140,7 +140,11 @@ export default function AuthForm() {
               : "Sign in to manage your review page."}
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-8 space-y-5" aria-busy={isBusy}>
+          <form
+            onSubmit={handleSubmit}
+            className="mt-8 space-y-5"
+            aria-busy={isBusy}
+          >
             <div>
               <label htmlFor="email" className="text-sm font-medium">
                 Email address
