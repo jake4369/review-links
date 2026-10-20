@@ -407,53 +407,84 @@ export default function BusinessDashboard({
             </section>
           )}
 
-          {/* Manual sharing with a pre-filled neutral invitation */}
+          {/* Share with customers */}
           {isPublished && shareUrl && (
-            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-start-1 lg:row-start-2">
-              <h2 className="text-lg font-semibold">Share With Customers</h2>
+            <section className="rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm lg:col-start-1 lg:row-start-2">
+              <h2 className="text-lg font-semibold text-slate-900">
+                Share With Customers
+              </h2>
 
-              <p className="mt-2 text-sm text-slate-500">
-                Choose how you&apos;d like to send your review link.
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                Choose how you&apos;d like to share your review page.
               </p>
 
+              {/* Primary sharing action */}
               <button
                 type="button"
                 onClick={shareProfile}
                 disabled={!shareUrl}
-                className="mt-5 w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-5 w-5"
+                >
+                  <circle cx="18" cy="5" r="3" />
+                  <circle cx="6" cy="12" r="3" />
+                  <circle cx="18" cy="19" r="3" />
+                  <path d="m8.7 13.5 6.6 4 M15.3 6.5l-6.6 4" />
+                </svg>
                 Share Anywhere
               </button>
 
+              {/* Native sharing feedback */}
               {shareStatus && (
                 <p
                   role="status"
-                  className="mt-2 text-sm leading-6 text-slate-600"
+                  className="mt-3 text-sm leading-6 text-slate-600"
                 >
                   {shareStatus}
                 </p>
               )}
 
-              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              {/* Visual separator */}
+              <div className="mt-5 flex items-center gap-3">
+                <span aria-hidden="true" className="h-px flex-1 bg-slate-200" />
+
+                <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  Or share directly
+                </span>
+
+                <span aria-hidden="true" className="h-px flex-1 bg-slate-200" />
+              </div>
+
+              {/* Quick sharing shortcuts */}
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <a
                   href={whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-xl bg-green-700 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-green-800"
+                  className="flex min-h-11 items-center justify-center rounded-xl border border-green-200 bg-green-50 px-3 py-3 text-sm font-semibold text-green-800 transition hover:bg-green-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700"
                 >
                   WhatsApp
                 </a>
 
                 <a
                   href={smsUrl}
-                  className="rounded-xl border border-slate-200 px-4 py-3 text-center text-sm font-semibold hover:bg-slate-50"
+                  className="flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                 >
                   SMS
                 </a>
 
                 <a
                   href={emailUrl}
-                  className="rounded-xl border border-slate-200 px-4 py-3 text-center text-sm font-semibold hover:bg-slate-50"
+                  className="flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                 >
                   Email
                 </a>
