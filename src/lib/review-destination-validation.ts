@@ -3,14 +3,6 @@
  * PostgreSQL's review_destination_is_valid() and CHECK constraint remain
  * authoritative; keep this helper aligned with any future SQL policy changes.
  */
-export const REVIEW_DESTINATIONS = [
-  { name: "Google", field: "google" },
-  { name: "Trustpilot", field: "trustpilot" },
-  { name: "Facebook", field: "facebook" },
-] as const;
-
-export type ReviewField = (typeof REVIEW_DESTINATIONS)[number]["field"];
-
 const isHostOrSubdomain = (host: string, domain: string) =>
   host === domain || host.endsWith(`.${domain}`);
 

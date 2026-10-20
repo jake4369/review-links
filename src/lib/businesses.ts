@@ -1,4 +1,4 @@
-export type ReviewLink = {
+type ReviewLink = {
   platform: string;
   url: string | null;
 };
