@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import SiteHeader from "@/components/SiteHeader";
+import { NavigationGuardProvider } from "@/components/NavigationGuardProvider";
 
 /**
  * Shared chrome for ReviewBranch's marketing home page and authenticated dashboard.
@@ -8,9 +9,9 @@ import SiteHeader from "@/components/SiteHeader";
  */
 export default function SiteLayout({ children }: { children: ReactNode }) {
   return (
-    <>
+    <NavigationGuardProvider>
       <SiteHeader />
       {children}
-    </>
+    </NavigationGuardProvider>
   );
 }

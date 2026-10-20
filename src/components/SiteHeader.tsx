@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useNavigationGuard } from "@/components/NavigationGuardProvider";
 
 type AuthState = "checking" | "signed-in" | "signed-out";
 type SiteLink = { label: string; href: string };
@@ -20,6 +21,7 @@ const primaryStyle = `inline-flex min-h-11 items-center justify-center rounded-l
 const secondaryStyle = `inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 ${focus}`;
 
 export default function SiteHeader() {
+  const { requestLeave } = useNavigationGuard();
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const pathname = usePathname();
@@ -108,8 +110,16 @@ export default function SiteHeader() {
     }
   }, [authState]);
 
+  function handleNavigation(event: { preventDefault: () => void }) {
+    if (!requestLeave()) {
+      event.preventDefault();
+      return;
+    }
+    setMenuOpen(false);
+  }
+
   async function signOut() {
-    if (isSigningOut) return;
+    if (isSigningOut || !requestLeave()) return;
     setSignOutError("");
     setIsSigningOut(true);
     try {
@@ -144,7 +154,7 @@ export default function SiteHeader() {
           href="/"
           aria-label="ReviewBranch homepage"
           className={`min-w-0 whitespace-nowrap text-lg font-bold tracking-tight text-slate-900 sm:text-xl ${focus}`}
-          onClick={() => setMenuOpen(false)}
+          onNavigate={handleNavigation}
         >
           Review<span className="text-blue-700">Branch</span>
         </Link>
@@ -155,7 +165,12 @@ export default function SiteHeader() {
           className="hidden items-center justify-center gap-4 lg:flex"
         >
           {SITE_LINKS.map(({ label, href }) => (
-            <Link key={href} href={href} className={linkStyle}>
+            <Link
+              key={href}
+              href={href}
+              onNavigate={handleNavigation}
+              className={linkStyle}
+            >
               {label}
             </Link>
           ))}
@@ -164,13 +179,22 @@ export default function SiteHeader() {
         {/* Desktop: account controls stay on the far right of the header container. */}
         <div className="hidden items-center justify-end gap-2 lg:flex">
           {signedOut && (
-            <Link ref={desktopLoginRef} href="/login" className={primaryStyle}>
+            <Link
+              ref={desktopLoginRef}
+              href="/login"
+              onNavigate={handleNavigation}
+              className={primaryStyle}
+            >
               Log in
             </Link>
           )}
           {signedIn && (
             <>
-              <Link href="/dashboard" className={primaryStyle}>
+              <Link
+                href="/dashboard"
+                onNavigate={handleNavigation}
+                className={primaryStyle}
+              >
                 Dashboard
               </Link>
               <button
@@ -234,7 +258,7 @@ export default function SiteHeader() {
                     key={href}
                     href={href}
                     ref={index === 0 ? firstMenuItemRef : undefined}
-                    onClick={() => setMenuOpen(false)}
+                    onNavigate={handleNavigation}
                     className={`rounded-lg px-4 py-3 text-sm font-medium text-slate-800 hover:bg-slate-100 ${focus}`}
                   >
                     {label}
@@ -246,7 +270,7 @@ export default function SiteHeader() {
                 {signedOut && (
                   <Link
                     href="/login"
-                    onClick={() => setMenuOpen(false)}
+                    onNavigate={handleNavigation}
                     className={`rounded-lg px-4 py-3 text-sm font-semibold text-blue-700 hover:bg-blue-50 ${focus}`}
                   >
                     Log in
@@ -256,7 +280,7 @@ export default function SiteHeader() {
                   <>
                     <Link
                       href="/dashboard"
-                      onClick={() => setMenuOpen(false)}
+                      onNavigate={handleNavigation}
                       className={`rounded-lg px-4 py-3 text-sm font-semibold text-blue-700 hover:bg-blue-50 ${focus}`}
                     >
                       Dashboard

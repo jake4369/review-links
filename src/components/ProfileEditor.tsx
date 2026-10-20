@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import type { MouseEvent, SubmitEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState, useTransition } from "react";
+import type { SubmitEvent } from "react";
 import Link from "next/link";
 import {
   saveBusinessProfile,
@@ -10,6 +10,7 @@ import {
 } from "@/app/(site)/dashboard/edit/actions";
 import { reviewDestinationError } from "@/lib/review-destination-validation";
 import { useReviewPageUrl } from "@/hooks/useReviewProfile";
+import { useNavigationGuard } from "@/components/NavigationGuardProvider";
 
 type BusinessDetails = {
   name: string;
@@ -30,8 +31,14 @@ type EditableDestination = {
 type InputName = "platform" | "url";
 
 const MAX_DESTINATIONS = 10;
+const BUSINESS_NAME_ERROR = "Business name must be 1–120 characters.";
 const inputClass =
   "mt-2 w-full rounded-xl border p-3 text-sm outline-none focus:border-blue-500";
+
+function validateBusinessName(value: string): string {
+  const name = value.trim();
+  return !name || name.length > 120 ? BUSINESS_NAME_ERROR : "";
+}
 
 function initialRows(destinations: SavedDestination[]): EditableDestination[] {
   return destinations.map((row) => ({
@@ -70,12 +77,14 @@ export default function ProfileEditor({
   business: BusinessDetails;
   destinations: SavedDestination[];
 }) {
+  const { registerGuard } = useNavigationGuard();
   const [rows, setRows] = useState<EditableDestination[]>(() =>
     initialRows(destinations),
   );
   const [invitationMessage, setInvitationMessage] = useState(
     business.invitationMessage,
   );
+  const [businessNameError, setBusinessNameError] = useState("");
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [attemptedSave, setAttemptedSave] = useState(false);
   const [response, setResponse] = useState<SaveProfileState>({
@@ -98,6 +107,23 @@ export default function ProfileEditor({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [orderingAnnouncement, setOrderingAnnouncement] = useState("");
 
+  const canLeaveEditor = useCallback(() => {
+    if (pending) return false;
+    return (
+      !hasUnsavedChanges ||
+      window.confirm(
+        "You have unsaved changes. Leave this page without saving them?",
+      )
+    );
+  }, [pending, hasUnsavedChanges]);
+
+  // Keep the header guard aligned with committed edits before another click.
+  // Cleanup also releases it when the editor is no longer active.
+  useLayoutEffect(
+    () => registerGuard(canLeaveEditor),
+    [registerGuard, canLeaveEditor],
+  );
+
   // Short confirmations disappear automatically; errors remain until
   // corrected or dismissed. Pending deletions and ordering stay visible in
   // the inline unsaved-changes notice until a successful save or reload.
@@ -108,8 +134,7 @@ export default function ProfileEditor({
   }, [response.error, response.success, infoMessage, noticeVersion]);
 
   // Warn when closing or refreshing the tab while edits have not been saved.
-  // Next.js Link handles client-side navigation, so links use the same guard
-  // explicitly below.
+  // Client-side navigation uses the shared editor guard separately.
   useEffect(() => {
     if (!hasUnsavedChanges) return;
     const warnBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -120,19 +145,8 @@ export default function ProfileEditor({
     return () => window.removeEventListener("beforeunload", warnBeforeUnload);
   }, [hasUnsavedChanges]);
 
-  function handleDashboardNavigation(event: MouseEvent<HTMLAnchorElement>) {
-    if (pending) {
-      event.preventDefault();
-      return;
-    }
-    if (
-      hasUnsavedChanges &&
-      !window.confirm(
-        "You have unsaved changes. Leave this page without saving them?",
-      )
-    ) {
-      event.preventDefault();
-    }
+  function handleDashboardNavigation(event: { preventDefault: () => void }) {
+    if (!canLeaveEditor()) event.preventDefault();
   }
 
   function revealNotice() {
@@ -309,7 +323,7 @@ export default function ProfileEditor({
     field: InputName,
     value: string,
   ) {
-    if (requiresReload) return;
+    if (pending || requiresReload) return;
     markUnsaved();
     setRows((previous) =>
       previous.map((row) =>
@@ -326,6 +340,19 @@ export default function ProfileEditor({
       ...previous,
       [`${clientKey}-${field}`]: true,
     }));
+  }
+
+  function reportBusinessNameError() {
+    setBusinessNameError(BUSINESS_NAME_ERROR);
+    setSaveConfirmed(false);
+    setResponse({ error: "", success: "" });
+    setInfoMessage("");
+    // Focus after the inline error renders, including on repeated attempts.
+    window.requestAnimationFrame(() => {
+      const input = document.getElementById("business-name");
+      input?.focus({ preventScroll: true });
+      input?.scrollIntoView({ block: "center" });
+    });
   }
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
@@ -349,6 +376,12 @@ export default function ProfileEditor({
       });
       return;
     }
+    const formData = new FormData(event.currentTarget);
+    if (validateBusinessName(String(formData.get("name") ?? ""))) {
+      reportBusinessNameError();
+      return;
+    }
+    setBusinessNameError("");
     setAttemptedSave(true);
     setSaveConfirmed(false);
     setResponse({ error: "", success: "" });
@@ -372,7 +405,6 @@ export default function ProfileEditor({
       return;
     }
 
-    const formData = new FormData(event.currentTarget);
     formData.set("destinations", currentPayload());
     formData.set(
       "confirmUnpublish",
@@ -414,6 +446,8 @@ export default function ProfileEditor({
       } catch (error) {
         console.error("Profile save request failed:", error);
         setSaveConfirmed(false);
+        // A failed response does not tell us whether the save reached the server.
+        setRequiresReload(true);
         setResponse({
           error:
             "Your changes couldn't be confirmed. Check the connection, then reload before retrying.",
@@ -461,7 +495,7 @@ export default function ProfileEditor({
         </div>
         <Link
           href="/dashboard"
-          onClick={handleDashboardNavigation}
+          onNavigate={handleDashboardNavigation}
           aria-disabled={pending}
           className="text-sm font-medium text-blue-600 hover:underline"
         >
@@ -474,6 +508,7 @@ export default function ProfileEditor({
 
         <form
           onSubmit={handleSubmit}
+          aria-busy={pending}
           onChange={() => {
             setSaveConfirmed(false);
             setHasUnsavedChanges(true);
@@ -493,8 +528,33 @@ export default function ProfileEditor({
                 required
                 maxLength={120}
                 defaultValue={business.name}
-                className={`${inputClass} border-slate-200 bg-white`}
+                disabled={pending || requiresReload}
+                onInvalid={(event) => {
+                  event.preventDefault();
+                  reportBusinessNameError();
+                }}
+                onChange={(event) => {
+                  if (businessNameError) {
+                    setBusinessNameError(
+                      validateBusinessName(event.currentTarget.value),
+                    );
+                  }
+                }}
+                aria-invalid={Boolean(businessNameError)}
+                aria-describedby={
+                  businessNameError ? "business-name-error" : undefined
+                }
+                className={`${inputClass} ${businessNameError ? "border-red-500 bg-red-50 focus:ring-2 focus:ring-red-100" : "border-slate-200 bg-white"}`}
               />
+              {businessNameError && (
+                <p
+                  id="business-name-error"
+                  role="alert"
+                  className="mt-2 text-sm text-red-700"
+                >
+                  {businessNameError}
+                </p>
+              )}
             </div>
             <div className="mt-5">
               <label htmlFor="logo-text" className="text-sm font-medium">
@@ -506,6 +566,7 @@ export default function ProfileEditor({
                 type="text"
                 maxLength={12}
                 defaultValue={business.logoText}
+                disabled={pending || requiresReload}
                 className={`${inputClass} border-slate-200 bg-white`}
               />
               <p className="mt-2 text-xs text-slate-600">
@@ -522,6 +583,7 @@ export default function ProfileEditor({
                 rows={4}
                 maxLength={500}
                 defaultValue={business.message}
+                disabled={pending || requiresReload}
                 className={`${inputClass} border-slate-200 bg-white`}
               />
             </div>
@@ -563,7 +625,9 @@ export default function ProfileEditor({
                 {confirmUnpublish && isPublished && rows.length === 0
                   ? "Saving with no review destinations will also UNPUBLISH your review page. "
                   : ""}
-                Select Save Changes to apply these updates.
+                {requiresReload
+                  ? "Reload the page to check which changes were saved."
+                  : "Select Save Changes to apply these updates."}
               </p>
             )}
             <datalist id="reviewlinks-platform-suggestions">
@@ -718,6 +782,7 @@ export default function ProfileEditor({
                         list="reviewlinks-platform-suggestions"
                         maxLength={40}
                         value={row.platform}
+                        disabled={pending || requiresReload}
                         onChange={(event) =>
                           updateDestination(
                             row.clientKey,
@@ -762,6 +827,7 @@ export default function ProfileEditor({
                         autoCapitalize="none"
                         autoComplete="url"
                         value={row.url}
+                        disabled={pending || requiresReload}
                         onChange={(event) =>
                           updateDestination(
                             row.clientKey,
@@ -828,6 +894,7 @@ export default function ProfileEditor({
                 rows={4}
                 maxLength={500}
                 value={invitationMessage}
+                disabled={pending || requiresReload}
                 onChange={(e) => setInvitationMessage(e.target.value)}
                 className={`${inputClass} border-slate-200 bg-white`}
               />
@@ -855,8 +922,8 @@ export default function ProfileEditor({
                 role="alert"
                 className="mb-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
               >
-                The save may have completed, but we couldn&apos;t refresh your
-                data. Please reload the page before editing again.
+                We couldn&apos;t confirm the save. Check your connection, then
+                reload the page before editing or saving again.
               </p>
             )}
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -869,7 +936,7 @@ export default function ProfileEditor({
               </button>
               <Link
                 href="/dashboard"
-                onClick={handleDashboardNavigation}
+                onNavigate={handleDashboardNavigation}
                 aria-disabled={pending}
                 className={`inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-6 py-4 text-center font-semibold text-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 sm:flex-1 ${
                   pending

@@ -10,11 +10,26 @@ import { createClient } from "@/lib/supabase/client";
 type AuthMode = "login" | "signup";
 type AuthFeedback = { kind: "error" | "success"; text: string } | null;
 
-export default function AuthForm() {
+export default function AuthForm({
+  confirmationFailed,
+}: {
+  confirmationFailed: boolean;
+}) {
   const router = useRouter();
 
   const [mode, setMode] = useState<AuthMode>("login");
-  const [feedback, setFeedback] = useState<AuthFeedback>(null);
+  const [feedback, setFeedback] = useState<AuthFeedback>(() =>
+    confirmationFailed
+      ? {
+          kind: "error",
+          text:
+            "We couldn't confirm your email address. " +
+            "The link may be invalid or expired. " +
+            "Open the most recent confirmation email and try its link. " +
+            "If you have already confirmed your email, sign in.",
+        }
+      : null,
+  );
   const [loading, setLoading] = useState(false);
   const [isNavigating, startNavigation] = useTransition();
 
