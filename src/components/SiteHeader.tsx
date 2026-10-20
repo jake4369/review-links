@@ -15,12 +15,9 @@ const SITE_LINKS: SiteLink[] = [
 
 const focus =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2";
-const linkStyle =
-  `rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:text-blue-700 ${focus}`;
-const primaryStyle =
-  `inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 ${focus}`;
-const secondaryStyle =
-  `inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 ${focus}`;
+const linkStyle = `rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:text-blue-700 ${focus}`;
+const primaryStyle = `inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 ${focus}`;
+const secondaryStyle = `inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 ${focus}`;
 
 export default function SiteHeader() {
   const supabase = useMemo(() => createClient(), []);
@@ -40,18 +37,19 @@ export default function SiteHeader() {
     let active = true;
     let authEventReceived = false;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === "INITIAL_SESSION") return;
-        authEventReceived = true;
-        if (active) {
-          setAuthState(session?.user ? "signed-in" : "signed-out");
-          setSignOutError("");
-        }
-      },
-    );
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "INITIAL_SESSION") return;
+      authEventReceived = true;
+      if (active) {
+        setAuthState(session?.user ? "signed-in" : "signed-out");
+        setSignOutError("");
+      }
+    });
 
-    void supabase.auth.getUser()
+    void supabase.auth
+      .getUser()
       .then(({ data, error }) => {
         if (active && !authEventReceived) {
           setAuthState(!error && data.user ? "signed-in" : "signed-out");
@@ -72,7 +70,10 @@ export default function SiteHeader() {
     firstMenuItemRef.current?.focus();
 
     const onPointerDown = (event: PointerEvent) => {
-      if (event.target instanceof Node && !menuRef.current?.contains(event.target)) {
+      if (
+        event.target instanceof Node &&
+        !menuRef.current?.contains(event.target)
+      ) {
         setMenuOpen(false);
       }
     };
@@ -145,11 +146,14 @@ export default function SiteHeader() {
           className={`min-w-0 whitespace-nowrap text-lg font-bold tracking-tight text-slate-900 sm:text-xl ${focus}`}
           onClick={() => setMenuOpen(false)}
         >
-          Review<span className="text-blue-600">Branch</span>
+          Review<span className="text-blue-700">Branch</span>
         </Link>
 
         {/* Desktop: site navigation stays centred independently of account actions. */}
-        <nav aria-label="Main navigation" className="hidden items-center justify-center gap-4 lg:flex">
+        <nav
+          aria-label="Main navigation"
+          className="hidden items-center justify-center gap-4 lg:flex"
+        >
           {SITE_LINKS.map(({ label, href }) => (
             <Link key={href} href={href} className={linkStyle}>
               {label}
@@ -166,7 +170,9 @@ export default function SiteHeader() {
           )}
           {signedIn && (
             <>
-              <Link href="/dashboard" className={primaryStyle}>Dashboard</Link>
+              <Link href="/dashboard" className={primaryStyle}>
+                Dashboard
+              </Link>
               <button
                 type="button"
                 onClick={signOut}
@@ -178,7 +184,11 @@ export default function SiteHeader() {
             </>
           )}
           {authState === "checking" && (
-            <span role="status" aria-label="Checking sign-in status" className="h-11 w-20 animate-pulse rounded-lg bg-slate-100 motion-reduce:animate-none" />
+            <span
+              role="status"
+              aria-label="Checking sign-in status"
+              className="h-11 w-20 animate-pulse rounded-lg bg-slate-100 motion-reduce:animate-none"
+            />
           )}
         </div>
 
@@ -187,14 +197,28 @@ export default function SiteHeader() {
           <button
             ref={toggleRef}
             type="button"
-            aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-label={
+              menuOpen ? "Close navigation menu" : "Open navigation menu"
+            }
             aria-expanded={menuOpen}
             aria-controls="reviewbranch-mobile-navigation"
             onClick={() => setMenuOpen((open) => !open)}
             className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-900 hover:bg-slate-50 ${focus}`}
           >
-            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-5 w-5">
-              {menuOpen ? <path d="M5 5l14 14M19 5L5 19" /> : <path d="M4 6h16M4 12h16M4 18h16" />}
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              className="h-5 w-5"
+            >
+              {menuOpen ? (
+                <path d="M5 5l14 14M19 5L5 19" />
+              ) : (
+                <path d="M4 6h16M4 12h16M4 18h16" />
+              )}
             </svg>
           </button>
 
@@ -216,30 +240,52 @@ export default function SiteHeader() {
                     {label}
                   </Link>
                 ))}
-                {authState !== "checking" && <div className="my-1 border-t border-slate-100" />}
+                {authState !== "checking" && (
+                  <div className="my-1 border-t border-slate-100" />
+                )}
                 {signedOut && (
-                  <Link href="/login" onClick={() => setMenuOpen(false)} className={`rounded-lg px-4 py-3 text-sm font-semibold text-blue-700 hover:bg-blue-50 ${focus}`}>
+                  <Link
+                    href="/login"
+                    onClick={() => setMenuOpen(false)}
+                    className={`rounded-lg px-4 py-3 text-sm font-semibold text-blue-700 hover:bg-blue-50 ${focus}`}
+                  >
                     Log in
                   </Link>
                 )}
                 {signedIn && (
                   <>
-                    <Link href="/dashboard" onClick={() => setMenuOpen(false)} className={`rounded-lg px-4 py-3 text-sm font-semibold text-blue-700 hover:bg-blue-50 ${focus}`}>
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setMenuOpen(false)}
+                      className={`rounded-lg px-4 py-3 text-sm font-semibold text-blue-700 hover:bg-blue-50 ${focus}`}
+                    >
                       Dashboard
                     </Link>
-                    <button type="button" onClick={signOut} disabled={isSigningOut} className={`w-full rounded-lg px-4 py-3 text-left text-sm font-medium text-slate-800 hover:bg-slate-100 disabled:cursor-wait disabled:opacity-60 ${focus}`}>
+                    <button
+                      type="button"
+                      onClick={signOut}
+                      disabled={isSigningOut}
+                      className={`w-full rounded-lg px-4 py-3 text-left text-sm font-medium text-slate-800 hover:bg-slate-100 disabled:cursor-wait disabled:opacity-60 ${focus}`}
+                    >
                       {isSigningOut ? "Logging out…" : "Log out"}
                     </button>
                   </>
                 )}
-                {authState === "checking" && <p role="status" className="px-4 py-3 text-sm text-slate-600">Checking your account…</p>}
+                {authState === "checking" && (
+                  <p role="status" className="px-4 py-3 text-sm text-slate-600">
+                    Checking your account…
+                  </p>
+                )}
               </div>
             </nav>
           )}
         </div>
       </div>
       {signOutError && (
-        <div role="alert" className="mx-auto max-w-6xl px-4 pb-3 text-sm text-red-700 sm:px-6">
+        <div
+          role="alert"
+          className="mx-auto max-w-6xl px-4 pb-3 text-sm text-red-700 sm:px-6"
+        >
           {signOutError}
         </div>
       )}

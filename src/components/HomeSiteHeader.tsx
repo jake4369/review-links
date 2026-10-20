@@ -17,8 +17,7 @@ const SITE_LINKS: SiteLink[] = [
 const focusRing =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2";
 
-const buttonBase =
-  `inline-flex min-h-11 items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${focusRing}`;
+const buttonBase = `inline-flex min-h-11 items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${focusRing}`;
 
 export default function HomeSiteHeader() {
   const supabase = useMemo(() => createClient(), []);
@@ -37,18 +36,19 @@ export default function HomeSiteHeader() {
     let active = true;
     let receivedAuthEvent = false;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === "INITIAL_SESSION") return;
-        receivedAuthEvent = true;
-        if (active) {
-          setAuthState(session?.user ? "signed-in" : "signed-out");
-          setSignOutError("");
-        }
-      },
-    );
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "INITIAL_SESSION") return;
+      receivedAuthEvent = true;
+      if (active) {
+        setAuthState(session?.user ? "signed-in" : "signed-out");
+        setSignOutError("");
+      }
+    });
 
-    void supabase.auth.getUser()
+    void supabase.auth
+      .getUser()
       .then(({ data, error }) => {
         if (active && !receivedAuthEvent) {
           setAuthState(!error && data.user ? "signed-in" : "signed-out");
@@ -66,7 +66,11 @@ export default function HomeSiteHeader() {
 
   // When the sign-out button disappears, restore focus to the visible login link.
   useEffect(() => {
-    if (authState === "signed-out" && !menuOpen && focusLoginAfterLogout.current) {
+    if (
+      authState === "signed-out" &&
+      !menuOpen &&
+      focusLoginAfterLogout.current
+    ) {
       focusLoginAfterLogout.current = false;
       loginLinkRef.current?.focus();
     }
@@ -78,7 +82,10 @@ export default function HomeSiteHeader() {
     firstMenuLinkRef.current?.focus();
 
     function onPointerDown(event: PointerEvent) {
-      if (event.target instanceof Node && !menuAreaRef.current?.contains(event.target)) {
+      if (
+        event.target instanceof Node &&
+        !menuAreaRef.current?.contains(event.target)
+      ) {
         setMenuOpen(false);
       }
     }
@@ -133,11 +140,14 @@ export default function HomeSiteHeader() {
         aria-label="ReviewBranch homepage"
         onClick={() => setMenuOpen(false)}
       >
-        Review<span className="text-blue-600">Branch</span>
+        Review<span className="text-blue-700">Branch</span>
       </Link>
 
       {/* Public site navigation stays centred on desktop. */}
-      <nav aria-label="Site navigation" className="hidden items-center justify-center gap-8 md:flex">
+      <nav
+        aria-label="Site navigation"
+        className="hidden items-center justify-center gap-8 md:flex"
+      >
         {SITE_LINKS.map((link) => (
           <Link
             key={link.href}
@@ -149,7 +159,10 @@ export default function HomeSiteHeader() {
         ))}
       </nav>
 
-      <div className="flex min-w-0 items-center justify-end gap-2 md:justify-self-end" ref={menuAreaRef}>
+      <div
+        className="flex min-w-0 items-center justify-end gap-2 md:justify-self-end"
+        ref={menuAreaRef}
+      >
         {signedOut && (
           <Link
             ref={loginLinkRef}
@@ -162,7 +175,11 @@ export default function HomeSiteHeader() {
         )}
 
         {authState === "checking" && (
-          <span role="status" aria-label="Checking sign-in status" className="inline-flex min-h-11 w-20 animate-pulse items-center justify-center rounded-lg bg-slate-100 text-xs text-slate-500 motion-reduce:animate-none">
+          <span
+            role="status"
+            aria-label="Checking sign-in status"
+            className="inline-flex min-h-11 w-20 animate-pulse items-center justify-center rounded-lg bg-slate-100 text-xs text-slate-500 motion-reduce:animate-none"
+          >
             <span className="sr-only">Checking your account</span>
           </span>
         )}
@@ -173,11 +190,21 @@ export default function HomeSiteHeader() {
           type="button"
           aria-expanded={menuOpen}
           aria-controls="reviewbranch-nav-panel"
-          aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-label={
+            menuOpen ? "Close navigation menu" : "Open navigation menu"
+          }
           onClick={() => setMenuOpen((open) => !open)}
           className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-800 transition-colors hover:bg-slate-50 ${focusRing} ${signedIn ? "" : "md:hidden"}`}
         >
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-5 w-5">
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            className="h-5 w-5"
+          >
             {menuOpen ? (
               <path d="M5 5l14 14M19 5L5 19" />
             ) : (
@@ -225,7 +252,11 @@ export default function HomeSiteHeader() {
                 </>
               )}
             </nav>
-            {signOutError && <p role="alert" className="mt-2 px-4 pb-2 text-sm text-red-700">{signOutError}</p>}
+            {signOutError && (
+              <p role="alert" className="mt-2 px-4 pb-2 text-sm text-red-700">
+                {signOutError}
+              </p>
+            )}
           </div>
         )}
       </div>
