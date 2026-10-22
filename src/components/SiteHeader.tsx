@@ -123,7 +123,7 @@ export default function SiteHeader() {
     setSignOutError("");
     setIsSigningOut(true);
     try {
-      const { error } = await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut({ scope: "local" });
       if (error) {
         setSignOutError("Unable to log out. Please try again.");
         return;
