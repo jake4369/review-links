@@ -80,7 +80,7 @@ export default function AuthForm({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/confirm`,
+            emailRedirectTo: `${window.location.origin}/confirm-email`,
           },
         });
 
@@ -99,8 +99,7 @@ export default function AuthForm({
           kind: "success",
           text:
             "Account created! Please check your email and " +
-            "click the confirmation link. Once verified, " +
-            "return here and sign in.",
+            "follow the confirmation link to activate your account.",
         });
 
         return;
@@ -209,7 +208,14 @@ export default function AuthForm({
                   Use a strong, unique password with at least 8 characters.
                 </p>
               ) : (
-                <div className="mt-2 text-right">
+                <div className="mt-2 flex flex-wrap justify-between gap-x-4 gap-y-2">
+                  <Link
+                    href="/resend-confirmation"
+                    className="text-sm font-semibold text-blue-600 hover:underline"
+                  >
+                    Resend confirmation email
+                  </Link>
+
                   <Link
                     href="/forgot-password"
                     className="text-sm font-semibold text-blue-600 hover:underline"
