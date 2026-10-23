@@ -12,24 +12,35 @@ type AuthFeedback = { kind: "error" | "success"; text: string } | null;
 
 export default function AuthForm({
   confirmationFailed,
+  passwordReset,
 }: {
   confirmationFailed: boolean;
+  passwordReset: boolean;
 }) {
   const router = useRouter();
 
   const [mode, setMode] = useState<AuthMode>("login");
-  const [feedback, setFeedback] = useState<AuthFeedback>(() =>
-    confirmationFailed
-      ? {
-          kind: "error",
-          text:
-            "We couldn't confirm your email address. " +
-            "The link may be invalid or expired. " +
-            "Open the most recent confirmation email and try its link. " +
-            "If you have already confirmed your email, sign in.",
-        }
-      : null,
-  );
+  const [feedback, setFeedback] = useState<AuthFeedback>(() => {
+    if (confirmationFailed) {
+      return {
+        kind: "error",
+        text:
+          "We couldn't confirm your email address. " +
+          "The link may be invalid or expired. " +
+          "Open the most recent confirmation email and try its link. " +
+          "If you have already confirmed your email, sign in.",
+      };
+    }
+
+    if (passwordReset) {
+      return {
+        kind: "success",
+        text: "Password changed successfully. Sign in with your new password.",
+      };
+    }
+
+    return null;
+  });
   const [loading, setLoading] = useState(false);
   const [isNavigating, startNavigation] = useTransition();
 
@@ -193,10 +204,19 @@ export default function AuthForm({
                 className={inputClass}
               />
 
-              {isSignup && (
+              {isSignup ? (
                 <p className="mt-2 text-xs text-slate-500">
                   Use a strong, unique password with at least 8 characters.
                 </p>
+              ) : (
+                <div className="mt-2 text-right">
+                  <Link
+                    href="/forgot-password"
+                    className="text-sm font-semibold text-blue-600 hover:underline"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
               )}
             </div>
 

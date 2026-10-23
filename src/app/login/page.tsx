@@ -15,14 +15,21 @@ export default async function LoginPage({
     redirect("/dashboard");
   }
 
-  const { confirmation } = await searchParams;
+  const { confirmation, password } = await searchParams;
   const confirmationFailed = confirmation === "failed";
+  const passwordReset = password === "reset";
 
-  // Reset initial feedback if navigation changes the confirmation outcome.
+  const stateKey = confirmationFailed
+    ? "confirmation-failed"
+    : passwordReset
+      ? "password-reset"
+      : "login";
+
   return (
     <AuthForm
-      key={confirmationFailed ? "confirmation-failed" : "login"}
+      key={stateKey}
       confirmationFailed={confirmationFailed}
+      passwordReset={passwordReset}
     />
   );
 }
