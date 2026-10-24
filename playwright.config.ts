@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 
 import { defineConfig, devices } from "@playwright/test";
 
-const TEST_BASE_URL = "http://127.0.0.1:3100";
+const TEST_BASE_URL = "http://localhost:3100";
 const LOCAL_SUPABASE_PORT = "54321";
 
 function readLocalSupabaseEnvironment() {
@@ -110,7 +110,7 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: "npm run dev -- -H 127.0.0.1 -p 3100",
+    command: "npm run dev -- -H localhost -p 3100",
     url: TEST_BASE_URL,
 
     // Never silently attach Playwright to somebody's manually-running
