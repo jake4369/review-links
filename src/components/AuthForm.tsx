@@ -12,7 +12,7 @@ import TurnstileChallenge from "@/components/TurnstileChallenge";
 const TURNSTILE_SITE_KEY =
   process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? "";
 const CAPTCHA_REQUIRED_MESSAGE =
-  "Complete the security verification before creating an account.";
+  "Complete the security verification before continuing.";
 
 type AuthMode = "login" | "signup";
 type AuthFeedback = { kind: "error" | "success"; text: string } | null;
@@ -72,9 +72,9 @@ export default function AuthForm({
 
     setFeedback(null);
 
-    // Only require a token where the public site key has been configured.
-    // Supabase CAPTCHA enforcement stays disabled until all auth flows are ready.
-    if (isSignup && TURNSTILE_SITE_KEY && !captchaToken) {
+    // Both signup and sign-in require a token when Turnstile is configured.
+    // Hosted enforcement stays disabled until every authentication flow is ready.
+    if (TURNSTILE_SITE_KEY && !captchaToken) {
       setFeedback({ kind: "error", text: CAPTCHA_REQUIRED_MESSAGE });
       return;
     }
@@ -126,6 +126,7 @@ export default function AuthForm({
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        ...(captchaToken ? { options: { captchaToken } } : {}),
       });
 
       if (error) {
@@ -140,8 +141,8 @@ export default function AuthForm({
         text: "Something went wrong. Please try again.",
       });
     } finally {
-      // A Turnstile token is single-use. Reset after every signup attempt.
-      if (isSignup && TURNSTILE_SITE_KEY) {
+      // Tokens are single-use. Reset after every authentication attempt.
+      if (TURNSTILE_SITE_KEY) {
         captchaRef.current?.reset();
         setCaptchaToken(null);
       }
@@ -251,8 +252,9 @@ export default function AuthForm({
               )}
             </div>
 
-            {isSignup && TURNSTILE_SITE_KEY && (
+            {TURNSTILE_SITE_KEY && (
               <TurnstileChallenge
+                key={mode}
                 siteKey={TURNSTILE_SITE_KEY}
                 widgetRef={captchaRef}
                 onTokenChange={(token) => {
@@ -271,10 +273,7 @@ export default function AuthForm({
 
             <button
               type="submit"
-              disabled={
-                isBusy ||
-                (isSignup && Boolean(TURNSTILE_SITE_KEY) && !captchaToken)
-              }
+              disabled={isBusy || (Boolean(TURNSTILE_SITE_KEY) && !captchaToken)}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-wait disabled:opacity-70"
             >
               {isBusy && (

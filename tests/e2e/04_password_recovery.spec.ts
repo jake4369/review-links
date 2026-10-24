@@ -191,22 +191,26 @@ test("password recovery safely replaces the old password", async ({
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password").fill(oldPassword);
 
-  await page.getByRole("button", {
-    name: "Sign In",
-  }).click();
+  const signInButton = page.getByRole("button", { name: "Sign In" });
+
+  // Wait for the first Turnstile challenge to complete before submitting.
+  await expect(signInButton).toBeEnabled({ timeout: 15_000 });
+  await signInButton.click();
 
   await expect(page).toHaveURL(
     /\/login(?:\?password=reset)?$/,
   );
 
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Invalid login credentials" }),
+  ).toBeVisible();
 
   // The replacement password must authenticate normally.
   await page.getByLabel("Password").fill(newPassword);
 
-  await page.getByRole("button", {
-    name: "Sign In",
-  }).click();
+  // The rejected attempt consumed its token. Wait for a fresh challenge.
+  await expect(signInButton).toBeEnabled({ timeout: 15_000 });
+  await signInButton.click();
 
   await expect(page).toHaveURL(
     /\/dashboard(?:\/create)?$/,

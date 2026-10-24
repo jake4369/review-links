@@ -46,7 +46,11 @@ test("browser authentication requests use local Supabase only", async ({
     "NotARealPassword123!",
   );
 
-  await page.getByRole("button", { name: "Sign In" }).click();
+  // Turnstile verification completes asynchronously. Confirm the form is
+  // ready before attempting sign-in, as in the signup regression tests.
+  const signInButton = page.getByRole("button", { name: "Sign In" });
+  await expect(signInButton).toBeEnabled({ timeout: 15_000 });
+  await signInButton.click();
 
   const authRequest = await authRequestPromise;
   const authUrl = new URL(authRequest.url());
