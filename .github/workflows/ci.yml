@@ -74,7 +74,7 @@ jobs:
         run: npm run lint
 
       - name: Run TypeScript checks
-        run: npx tsc --noEmit
+        run: npm run typecheck
 
       - name: Build application
         run: npm run build
