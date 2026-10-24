@@ -129,6 +129,10 @@ export default defineConfig({
 
       // Browser tests must never inherit the production Resend credential.
       SUPABASE_RESEND_API_KEY: "",
+
+      // Cloudflare's public always-pass TEST sitekey. This is only injected
+      // into the isolated local Playwright web server, never production.
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
     },
   },
 });

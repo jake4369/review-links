@@ -61,9 +61,20 @@ test("business can be created, configured, published and viewed publicly", async
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password").fill(password);
 
-  await page.getByRole("button", {
+  const createAccountButton = page.getByRole("button", {
     name: "Create Account",
-  }).click();
+  });
+
+  // Wait for Turnstile to finish before attempting account creation.
+  await expect(createAccountButton).toBeEnabled({ timeout: 15_000 });
+  await createAccountButton.click();
+
+  // Fail at signup rather than waiting for an email that was never sent.
+  await expect(
+    page.locator('div[role="status"]').filter({
+      hasText: "Account created!",
+    }),
+  ).toContainText("Account created! Please check your email");
 
   await expect(page).toHaveURL(/\/login$/);
 
@@ -275,11 +286,18 @@ test("business can be created, configured, published and viewed publicly", async
 
   await signedInVisitorPage.getByLabel("Password").fill(password);
 
-  await signedInVisitorPage
-    .getByRole("button", {
-      name: "Create Account",
-    })
-    .click();
+  const visitorCreateAccountButton = signedInVisitorPage.getByRole("button", {
+    name: "Create Account",
+  });
+
+  await expect(visitorCreateAccountButton).toBeEnabled({ timeout: 15_000 });
+  await visitorCreateAccountButton.click();
+
+  await expect(
+    signedInVisitorPage.locator('div[role="status"]').filter({
+      hasText: "Account created!",
+    }),
+  ).toContainText("Account created! Please check your email");
 
   await expect(signedInVisitorPage).toHaveURL(/\/login$/);
 

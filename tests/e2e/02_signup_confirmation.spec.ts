@@ -58,9 +58,14 @@ test("signup confirmation uses the safe email flow", async ({
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password").fill(password);
 
-  await page.getByRole("button", {
+  const createAccountButton = page.getByRole("button", {
     name: "Create Account",
-  }).click();
+  });
+
+  // The challenge becomes ready asynchronously; observe that state explicitly
+  // before attempting to submit rather than racing its first enabled frame.
+  await expect(createAccountButton).toBeEnabled({ timeout: 15_000 });
+  await createAccountButton.click();
 
   await expect(page).toHaveURL(/\/login$/);
 
