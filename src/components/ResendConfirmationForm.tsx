@@ -1,10 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { SubmitEvent } from "react";
+import type { TurnstileInstance } from "@marsidev/react-turnstile";
 import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/client";
+import TurnstileChallenge from "@/components/TurnstileChallenge";
+
+const TURNSTILE_SITE_KEY =
+  process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? "";
 
 type Feedback = { kind: "error"; text: string } | null;
 
@@ -12,6 +17,8 @@ export default function ResendConfirmationForm() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captchaRef = useRef<TurnstileInstance | null>(null);
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -19,6 +26,15 @@ export default function ResendConfirmationForm() {
     if (loading) return;
 
     setFeedback(null);
+
+    if (TURNSTILE_SITE_KEY && !captchaToken) {
+      setFeedback({
+        kind: "error",
+        text: "Complete the security verification before continuing.",
+      });
+      return;
+    }
+
     setLoading(true);
 
     const formData = new FormData(event.currentTarget);
@@ -35,6 +51,7 @@ export default function ResendConfirmationForm() {
         email,
         options: {
           emailRedirectTo: `${window.location.origin}/confirm-email`,
+          ...(captchaToken ? { captchaToken } : {}),
         },
       });
 
@@ -55,6 +72,11 @@ export default function ResendConfirmationForm() {
         text: "Something went wrong. Please try again.",
       });
     } finally {
+      // CAPTCHA tokens are single-use; reset after each resend attempt.
+      if (TURNSTILE_SITE_KEY) {
+        captchaRef.current?.reset();
+        setCaptchaToken(null);
+      }
       setLoading(false);
     }
   }
@@ -120,9 +142,17 @@ export default function ResendConfirmationForm() {
               />
             </div>
 
+            {TURNSTILE_SITE_KEY && (
+              <TurnstileChallenge
+                siteKey={TURNSTILE_SITE_KEY}
+                widgetRef={captchaRef}
+                onTokenChange={setCaptchaToken}
+              />
+            )}
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || (Boolean(TURNSTILE_SITE_KEY) && !captchaToken)}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-wait disabled:opacity-70"
             >
               {loading && (
