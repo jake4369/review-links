@@ -1,0 +1,4 @@
+-- ReviewBranch local development seed.
+--
+-- Intentionally empty.
+-- Automated database tests create their own isolated test data and roll it back.
