@@ -256,5 +256,63 @@ test("business can be created, configured, published and viewed publicly", async
     "https://www.yell.com/",
   );
 
+  // A different signed-in user must also be able to view
+  // another owner's published review profile.
+  const signedInVisitorContext = await browser.newContext();
+  const signedInVisitorPage = await signedInVisitorContext.newPage();
+
+  const visitorEmail = `playwright-visitor-${timestamp}@reviewbranch.test`;
+
+  await signedInVisitorPage.goto(`${APP_ORIGIN}/login`);
+
+  await signedInVisitorPage
+    .getByRole("button", {
+      name: "Create an Account",
+    })
+    .click();
+
+  await signedInVisitorPage.getByLabel("Email address").fill(visitorEmail);
+
+  await signedInVisitorPage.getByLabel("Password").fill(password);
+
+  await signedInVisitorPage
+    .getByRole("button", {
+      name: "Create Account",
+    })
+    .click();
+
+  await expect(signedInVisitorPage).toHaveURL(/\/login$/);
+
+  const visitorConfirmationLink = await waitForConfirmationLink(visitorEmail);
+
+  await signedInVisitorPage.goto(visitorConfirmationLink);
+
+  await signedInVisitorPage
+    .getByRole("button", {
+      name: "Confirm email address",
+    })
+    .click();
+
+  await expect(signedInVisitorPage).toHaveURL(/\/dashboard(?:\/create)?$/);
+
+  // The visitor is authenticated but does not own the business.
+  const signedInPublicResponse = await signedInVisitorPage.goto(publicUrl);
+
+  expect(signedInPublicResponse?.status()).toBe(200);
+
+  await expect(
+    signedInVisitorPage.getByRole("heading", {
+      name: businessName,
+    }),
+  ).toBeVisible();
+
+  await expect(
+    signedInVisitorPage.getByRole("link", {
+      name: "Review us on Yell",
+    }),
+  ).toHaveAttribute("href", "https://www.yell.com/");
+
+  await signedInVisitorContext.close();
+
   await anonymousAfterPublish.close();
 });

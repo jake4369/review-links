@@ -64,14 +64,18 @@ where id = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee1';
 set local role authenticated;
 set local request.jwt.claim.sub = '33333333-3333-4333-8333-333333333333';
 
+-- Authenticated database clients must not read another
+-- owner's business records, even when published.
+-- Public review pages use the independent anon client.
+
 select results_eq(
   $$
     select count(*)
     from public.businesses
     where id = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee1'
   $$,
-  array[1::bigint],
-  'signed-in users can read another owner''s published business'
+  array[0::bigint],
+  'authenticated non-owners cannot directly read another published business'
 );
 
 select results_eq(
@@ -80,8 +84,8 @@ select results_eq(
     from public.review_links
     where id = 'ffffffff-ffff-4fff-8fff-fffffffffff1'
   $$,
-  array[1::bigint],
-  'signed-in users can read review links for another owner''s published business'
+  array[0::bigint],
+  'authenticated non-owners cannot directly read another published business review links'
 );
 
 select * from finish();
