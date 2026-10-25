@@ -252,25 +252,6 @@ export default function AuthForm({
               )}
             </div>
 
-            {TURNSTILE_SITE_KEY && (
-              <TurnstileChallenge
-                key={mode}
-                siteKey={TURNSTILE_SITE_KEY}
-                widgetRef={captchaRef}
-                onTokenChange={(token) => {
-                  setCaptchaToken(token);
-                  if (token) {
-                    setFeedback((current) =>
-                      current?.kind === "error" &&
-                      current.text === CAPTCHA_REQUIRED_MESSAGE
-                        ? null
-                        : current,
-                    );
-                  }
-                }}
-              />
-            )}
-
             <button
               type="submit"
               disabled={isBusy || (Boolean(TURNSTILE_SITE_KEY) && !captchaToken)}
@@ -290,6 +271,27 @@ export default function AuthForm({
                   ? "Create Account"
                   : "Sign In"}
             </button>
+
+            {TURNSTILE_SITE_KEY && (
+              <div className="flex justify-center">
+                <TurnstileChallenge
+                  key={mode}
+                  siteKey={TURNSTILE_SITE_KEY}
+                  widgetRef={captchaRef}
+                  onTokenChange={(token) => {
+                    setCaptchaToken(token);
+                    if (token) {
+                      setFeedback((current) =>
+                        current?.kind === "error" &&
+                        current.text === CAPTCHA_REQUIRED_MESSAGE
+                          ? null
+                          : current,
+                      );
+                    }
+                  }}
+                />
+              </div>
+            )}
 
             <p role="status" aria-live="polite" className="sr-only">
               {isBusy

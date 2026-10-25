@@ -142,14 +142,6 @@ export default function ResendConfirmationForm() {
               />
             </div>
 
-            {TURNSTILE_SITE_KEY && (
-              <TurnstileChallenge
-                siteKey={TURNSTILE_SITE_KEY}
-                widgetRef={captchaRef}
-                onTokenChange={setCaptchaToken}
-              />
-            )}
-
             <button
               type="submit"
               disabled={loading || (Boolean(TURNSTILE_SITE_KEY) && !captchaToken)}
@@ -164,6 +156,16 @@ export default function ResendConfirmationForm() {
 
               {loading ? "Sending..." : "Resend confirmation email"}
             </button>
+
+            {TURNSTILE_SITE_KEY && (
+              <div className="flex justify-center">
+                <TurnstileChallenge
+                  siteKey={TURNSTILE_SITE_KEY}
+                  widgetRef={captchaRef}
+                  onTokenChange={setCaptchaToken}
+                />
+              </div>
+            )}
 
             <p role="status" aria-live="polite" className="sr-only">
               {loading ? "Sending confirmation email, please wait." : ""}
