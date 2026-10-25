@@ -155,14 +155,6 @@ export default function ForgotPasswordForm({
                   />
                 </div>
 
-                {TURNSTILE_SITE_KEY && (
-                  <TurnstileChallenge
-                    siteKey={TURNSTILE_SITE_KEY}
-                    widgetRef={captchaRef}
-                    onTokenChange={setCaptchaToken}
-                  />
-                )}
-
                 <button
                   type="submit"
                   disabled={
@@ -179,6 +171,16 @@ export default function ForgotPasswordForm({
 
                   {loading ? "Sending..." : "Send reset link"}
                 </button>
+
+                {TURNSTILE_SITE_KEY && (
+                  <div className="flex justify-center">
+                    <TurnstileChallenge
+                      siteKey={TURNSTILE_SITE_KEY}
+                      widgetRef={captchaRef}
+                      onTokenChange={setCaptchaToken}
+                    />
+                  </div>
+                )}
 
                 <p role="status" aria-live="polite" className="sr-only">
                   {loading
