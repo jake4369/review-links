@@ -64,9 +64,20 @@ test("published profile edits persist and public destination order updates", asy
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password").fill(password);
 
-  await page.getByRole("button", {
+  const createAccountButton = page.getByRole("button", {
     name: "Create Account",
-  }).click();
+  });
+
+  // Wait for Turnstile verification before submitting the signup form.
+  await expect(createAccountButton).toBeEnabled({ timeout: 15_000 });
+  await createAccountButton.click();
+
+  // Report failed signup here instead of timing out on the email lookup.
+  await expect(
+    page.locator('div[role="status"]').filter({
+      hasText: "Account created!",
+    }),
+  ).toContainText("Account created! Please check your email");
 
   await expect(page).toHaveURL(/\/login$/);
 

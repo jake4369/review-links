@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import type { SubmitEvent } from "react";
+import type { TurnstileInstance } from "@marsidev/react-turnstile";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
+import TurnstileChallenge from "@/components/TurnstileChallenge";
+
+const TURNSTILE_SITE_KEY =
+  process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? "";
+const CAPTCHA_REQUIRED_MESSAGE =
+  "Complete the security verification before continuing.";
 
 type AuthMode = "login" | "signup";
 type AuthFeedback = { kind: "error" | "success"; text: string } | null;
@@ -42,6 +49,8 @@ export default function AuthForm({
     return null;
   });
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captchaRef = useRef<TurnstileInstance | null>(null);
   const [isNavigating, startNavigation] = useTransition();
 
   const isSignup = mode === "signup";
@@ -62,6 +71,14 @@ export default function AuthForm({
     if (isBusy) return;
 
     setFeedback(null);
+
+    // Both signup and sign-in require a token when Turnstile is configured.
+    // Hosted enforcement stays disabled until every authentication flow is ready.
+    if (TURNSTILE_SITE_KEY && !captchaToken) {
+      setFeedback({ kind: "error", text: CAPTCHA_REQUIRED_MESSAGE });
+      return;
+    }
+
     setLoading(true);
 
     const formData = new FormData(event.currentTarget);
@@ -81,6 +98,7 @@ export default function AuthForm({
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/confirm-email`,
+            ...(captchaToken ? { captchaToken } : {}),
           },
         });
 
@@ -108,6 +126,7 @@ export default function AuthForm({
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        ...(captchaToken ? { options: { captchaToken } } : {}),
       });
 
       if (error) {
@@ -122,6 +141,12 @@ export default function AuthForm({
         text: "Something went wrong. Please try again.",
       });
     } finally {
+      // Tokens are single-use. Reset after every authentication attempt.
+      if (TURNSTILE_SITE_KEY) {
+        captchaRef.current?.reset();
+        setCaptchaToken(null);
+      }
+
       // isNavigating remains true through Next.js route navigation.
       setLoading(false);
     }
@@ -130,6 +155,7 @@ export default function AuthForm({
   function switchMode() {
     if (isBusy) return;
     setMode(isSignup ? "login" : "signup");
+    setCaptchaToken(null);
     setFeedback(null);
   }
 
@@ -226,9 +252,28 @@ export default function AuthForm({
               )}
             </div>
 
+            {TURNSTILE_SITE_KEY && (
+              <TurnstileChallenge
+                key={mode}
+                siteKey={TURNSTILE_SITE_KEY}
+                widgetRef={captchaRef}
+                onTokenChange={(token) => {
+                  setCaptchaToken(token);
+                  if (token) {
+                    setFeedback((current) =>
+                      current?.kind === "error" &&
+                      current.text === CAPTCHA_REQUIRED_MESSAGE
+                        ? null
+                        : current,
+                    );
+                  }
+                }}
+              />
+            )}
+
             <button
               type="submit"
-              disabled={isBusy}
+              disabled={isBusy || (Boolean(TURNSTILE_SITE_KEY) && !captchaToken)}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-wait disabled:opacity-70"
             >
               {isBusy && (
