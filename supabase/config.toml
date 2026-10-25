@@ -220,11 +220,13 @@ token_verifications = 30
 # Number of Web3 logins that can be made in a 5 minute interval per IP address.
 web3 = 30
 
-# Configure one of the supported captcha providers: `hcaptcha`, `turnstile`.
-# [auth.captcha]
-# enabled = true
-# provider = "hcaptcha"
-# secret = ""
+# Local auth abuse-protection testing only. Hosted Supabase is configured separately.
+# Use Cloudflare's official dummy test secret via a local environment variable.
+# Never use the production Cloudflare secret for automated tests.
+[auth.captcha]
+enabled = true
+provider = "turnstile"
+secret = "env(REVIEWBRANCH_TURNSTILE_LOCAL_TEST_SECRET)"
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.

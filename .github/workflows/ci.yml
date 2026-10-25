@@ -36,6 +36,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Configure local CAPTCHA test credential
+        run: |
+          # Cloudflare's published dummy key is only for isolated CI testing.
+          printf '%s\n' 'REVIEWBRANCH_TURNSTILE_LOCAL_TEST_SECRET=1x0000000000000000000000000000000AA' > .env
+
       - name: Start local Supabase
         run: npx supabase start
 
