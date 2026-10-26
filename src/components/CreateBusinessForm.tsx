@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { useReviewPageUrl } from "@/hooks/useReviewProfile";
 import { createBusiness } from "@/app/(site)/dashboard/create/actions";
 
 const initialState = {
@@ -16,6 +17,7 @@ export default function CreateBusinessForm() {
   );
 
   const previewSlug = slug.trim() || "your-business";
+  const previewUrl = useReviewPageUrl(previewSlug);
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-12 text-slate-900">
@@ -99,7 +101,7 @@ export default function CreateBusinessForm() {
               </p>
 
               <p className="mt-2 break-all text-sm font-semibold text-blue-700">
-                reviewbranch.com/r/{previewSlug}
+                {previewUrl || `/r/${previewSlug}`}
               </p>
             </div>
           </div>
